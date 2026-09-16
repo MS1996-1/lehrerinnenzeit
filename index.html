@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-BNoz3AFRPhjpGHQiUWvkmpCV/PGP6oMfsXnDUdJKVj8=' https://www.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https://*.googleapis.com https://*.firebaseio.com wss://*.firebaseio.com https://*.firebaseapp.com https://www.gstatic.com; manifest-src 'self'; worker-src 'self'; base-uri 'none'; object-src 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-ZjCGzapQsUk6aa3pOIN3YpmIJD5DPmbAtbTVidRWJY0=' https://www.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https://*.googleapis.com https://*.firebaseio.com wss://*.firebaseio.com https://*.firebaseapp.com https://www.gstatic.com; manifest-src 'self'; worker-src 'self'; base-uri 'none'; object-src 'none'; form-action 'none'">
 <meta name="referrer" content="no-referrer">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#F7F7F5">
@@ -240,7 +240,7 @@ textarea{width:100%;border:1px solid var(--line);background:var(--surface2);bord
       <div class="err hidden" id="aErr"></div>
       <div class="acts"><button class="btn" id="aReg">Registrieren</button><button class="btn p" id="aLogin">Anmelden</button></div>
       <button class="link" id="aReset" style="margin-top:8px">Passwort vergessen</button>
-      <p class="note" style="margin-top:30px">Version 14</p>
+      <p class="note" style="margin-top:30px">Version 15</p>
     </div>
     <div id="authCfg" class="hidden err">Firebase-Konfiguration fehlt. In index.html den Block FIREBASE_CONFIG ausfüllen (siehe Anleitung, Schritt 5).</div>
   </div>
@@ -307,6 +307,11 @@ function courseColor(id){const c=courseById(id);return safeColor(c&&c.color)}
 const isHM=v=>/^\d{2}:\d{2}$/.test(String(v||""));const isYMD=v=>/^\d{4}-\d{2}-\d{2}$/.test(String(v||""));
 function normCourses(a){return Array.isArray(a)?a.filter(c=>c&&c.id).map(c=>({id:String(c.id),name:String(c.name||"Kurs").slice(0,60),color:safeColor(c.color)})):[]}
 function normEntry(e){if(!e||!e.id||!isYMD(e.date))return null;const m=Number(e.minutes);if(!(m>0))return null;return {id:String(e.id),date:e.date,start:isHM(e.start)?e.start:"",end:isHM(e.end)?e.end:"",minutes:Math.round(m),courseId:String(e.courseId||""),activity:String(e.activity||"Sonstiges").slice(0,60)}}
+const THEME_KEY="lehrerzeit-theme";
+function themePref(){try{return localStorage.getItem(THEME_KEY)||"auto"}catch(e){return "auto"}}
+function applyTheme(t){const r=document.documentElement;if(t==="auto")r.removeAttribute("data-theme");else r.setAttribute("data-theme",t);
+  try{t==="auto"?localStorage.removeItem(THEME_KEY):localStorage.setItem(THEME_KEY,t)}catch(e){}
+  const m=document.querySelector('meta[name="theme-color"]');if(m)m.setAttribute("content",dark()?"#101010":"#F7F7F5")}
 const dark=()=>{const t=document.documentElement.getAttribute("data-theme");if(t==="dark")return true;if(t==="light")return false;return !!(window.matchMedia&&window.matchMedia("(prefers-color-scheme: dark)").matches)};
 function catVars(cat){const st=CAT_STYLE[cat]||["#E6E6E1","#4A4A46"];return dark()?`--c:${st[1]}CC;--ci:${st[0]}`:`--c:${st[0]};--ci:${st[1]}`}
 function catMark(cat){const st=CAT_STYLE[cat]||["#E6E6E1","#4A4A46"];return dark()?st[1]:st[0]}
@@ -640,12 +645,14 @@ function openSettings(){
   const to=ymd(new Date()),from=ymd(addDays(mondayOf(new Date()),-7*8));
   open(`<h2>Einstellungen</h2>
     <div class="field"><label>Wochen-Soll in Stunden</label><input type="number" id="tg" step="0.5" min="0" value="${S.settings.weeklyTarget}"></div>
+    <div class="field"><label>Darstellung</label><div class="chips" id="thm" style="margin-bottom:0">${[["auto","Automatisch"],["light","Hell"],["dark","Dunkel"]].map(([v,n])=>`<button data-t="${v}" class="${themePref()===v?"on":""}">${n}</button>`).join("")}</div></div>
     <div class="field"><label>Export als CSV</label><div class="two"><input type="date" id="xf" value="${from}"><input type="date" id="xt" value="${to}"></div></div>
     <div class="acts"><button class="btn" id="csv">CSV</button><button class="btn" id="json">Backup sichern</button><button class="btn" id="imp">Backup einspielen</button></div><input type="file" id="impFile" accept=".json,application/json" style="display:none"><div id="xo"></div>
     <p class="note">${S.user?"Angemeldet als "+esc(S.user.email)+". Änderungen werden auf allen angemeldeten Geräten synchronisiert, offline zwischengespeichert.":"Nicht angemeldet, Daten liegen nur auf diesem Gerät."}</p>
-    <p class="note">Version 14. Als App installieren: Android Chrome Menü „Zum Startbildschirm hinzufügen“, iPad Safari Teilen „Zum Home-Bildschirm“, Windows Chrome/Edge Adressleiste „App installieren“.</p>
+    <p class="note">Version 15. Als App installieren: Android Chrome Menü „Zum Startbildschirm hinzufügen“, iPad Safari Teilen „Zum Home-Bildschirm“, Windows Chrome/Edge Adressleiste „App installieren“.</p>
     <div class="acts">${S.user?'<button class="btn dg" id="lo">Abmelden</button>':""}<button class="btn" id="c">Schließen</button><button class="btn p" id="s">Speichern</button></div>`);
   const lo=$("lo");if(lo)lo.onclick=()=>ask("Abmelden? Die Daten bleiben im Konto und erscheinen nach erneuter Anmeldung.","Abmelden",()=>{close();logout()});
+  $("thm").querySelectorAll("button").forEach(b=>b.onclick=()=>{applyTheme(b.dataset.t);$("thm").querySelectorAll("button").forEach(x=>x.classList.toggle("on",x===b));render()});
   $("c").onclick=close;$("s").onclick=async()=>{const t=Number($("tg").value);if(isNaN(t)||t<0){toast("Zahl prüfen");return}S.settings.weeklyTarget=t;close();await persistSettings();render()};
   $("csv").onclick=()=>exportCsv($("xf").value,$("xt").value);$("json").onclick=exportJson;
   $("imp").onclick=()=>$("impFile").click();$("impFile").onchange=ev=>{const f=ev.target.files[0];if(!f)return;const rd=new FileReader();rd.onload=()=>{let o;try{o=JSON.parse(rd.result)}catch(e){toast("Datei nicht lesbar");return}
@@ -666,8 +673,10 @@ async function exportCsv(from,to){if(!from||!to){toast("Zeitraum angeben");retur
 async function exportJson(){const weeks=await weeksInRange("0000-W00","9999-W99");await deliver("lehrerzeit_backup_"+ymd(new Date())+".json",JSON.stringify({exportiert:new Date().toISOString(),courses:S.courses,settings:S.settings,stundenplan:S.plan,weeks:Object.values(weeks)},null,1))}
 
 let toastT=null;function toast(m,label,fn,ms){const t=$("toast");t.innerHTML=`<span>${esc(m)}</span>`+(label?`<button id="toastBtn">${esc(label)}</button>`:"");t.classList.toggle("act",!!label);t.classList.add("show");clearTimeout(toastT);if(label)$("toastBtn").onclick=()=>{t.classList.remove("show");fn()};toastT=setTimeout(()=>t.classList.remove("show"),ms||2200)}
-authBind();init();
+authBind();applyTheme(themePref());
+init();
 document.addEventListener("visibilitychange",()=>{if(!document.hidden&&S.tab==="woche")render()});
+if(window.matchMedia){const mq=window.matchMedia("(prefers-color-scheme: dark)");const onm=()=>{if(themePref()==="auto"){applyTheme("auto");render()}};if(mq.addEventListener)mq.addEventListener("change",onm);else if(mq.addListener)mq.addListener(onm)}
 let rsT=null;window.addEventListener("resize",()=>{clearTimeout(rsT);rsT=setTimeout(()=>{if(S.tab==="ueb")render()},200)});
 })();
 </script>

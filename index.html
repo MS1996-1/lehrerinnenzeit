@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-BuxlyRP3DNwqjgiLQXwIdTOH6Mw55HkoEoUB2tR302Y=' https://www.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https://*.googleapis.com https://*.firebaseio.com wss://*.firebaseio.com https://*.firebaseapp.com https://www.gstatic.com; manifest-src 'self'; worker-src 'self'; base-uri 'none'; object-src 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-BNoz3AFRPhjpGHQiUWvkmpCV/PGP6oMfsXnDUdJKVj8=' https://www.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https://*.googleapis.com https://*.firebaseio.com wss://*.firebaseio.com https://*.firebaseapp.com https://www.gstatic.com; manifest-src 'self'; worker-src 'self'; base-uri 'none'; object-src 'none'; form-action 'none'">
 <meta name="referrer" content="no-referrer">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#F7F7F5">
@@ -240,7 +240,7 @@ textarea{width:100%;border:1px solid var(--line);background:var(--surface2);bord
       <div class="err hidden" id="aErr"></div>
       <div class="acts"><button class="btn" id="aReg">Registrieren</button><button class="btn p" id="aLogin">Anmelden</button></div>
       <button class="link" id="aReset" style="margin-top:8px">Passwort vergessen</button>
-      <p class="note" style="margin-top:30px">Version 13</p>
+      <p class="note" style="margin-top:30px">Version 14</p>
     </div>
     <div id="authCfg" class="hidden err">Firebase-Konfiguration fehlt. In index.html den Block FIREBASE_CONFIG ausfüllen (siehe Anleitung, Schritt 5).</div>
   </div>
@@ -643,7 +643,7 @@ function openSettings(){
     <div class="field"><label>Export als CSV</label><div class="two"><input type="date" id="xf" value="${from}"><input type="date" id="xt" value="${to}"></div></div>
     <div class="acts"><button class="btn" id="csv">CSV</button><button class="btn" id="json">Backup sichern</button><button class="btn" id="imp">Backup einspielen</button></div><input type="file" id="impFile" accept=".json,application/json" style="display:none"><div id="xo"></div>
     <p class="note">${S.user?"Angemeldet als "+esc(S.user.email)+". Änderungen werden auf allen angemeldeten Geräten synchronisiert, offline zwischengespeichert.":"Nicht angemeldet, Daten liegen nur auf diesem Gerät."}</p>
-    <p class="note">Version 13. Als App installieren: Android Chrome Menü „Zum Startbildschirm hinzufügen“, iPad Safari Teilen „Zum Home-Bildschirm“, Windows Chrome/Edge Adressleiste „App installieren“.</p>
+    <p class="note">Version 14. Als App installieren: Android Chrome Menü „Zum Startbildschirm hinzufügen“, iPad Safari Teilen „Zum Home-Bildschirm“, Windows Chrome/Edge Adressleiste „App installieren“.</p>
     <div class="acts">${S.user?'<button class="btn dg" id="lo">Abmelden</button>':""}<button class="btn" id="c">Schließen</button><button class="btn p" id="s">Speichern</button></div>`);
   const lo=$("lo");if(lo)lo.onclick=()=>ask("Abmelden? Die Daten bleiben im Konto und erscheinen nach erneuter Anmeldung.","Abmelden",()=>{close();logout()});
   $("c").onclick=close;$("s").onclick=async()=>{const t=Number($("tg").value);if(isNaN(t)||t<0){toast("Zahl prüfen");return}S.settings.weeklyTarget=t;close();await persistSettings();render()};

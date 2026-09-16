@@ -215,7 +215,7 @@ textarea{width:100%;border:1px solid var(--line);background:var(--surface2);bord
 <script>
 (function(){
 "use strict";
-/* ===== Firebase-Konfiguration ===== */
+/* ===== Schritt 5 der Anleitung: hier den Konfigurationsblock aus der Firebase-Konsole einsetzen ===== */
 const FIREBASE_CONFIG={
   apiKey:"AIzaSyDd1gsgn3pMdT_rZdC8DEn4rx8aCfLFozk",
   authDomain:"lehrinnenzeit.firebaseapp.com",
@@ -224,7 +224,7 @@ const FIREBASE_CONFIG={
   messagingSenderId:"254538553585",
   appId:"1:254538553585:web:3d2a9feac2885fcc613150"
 };
-/* ================================== */
+/* ================================================================================================== */
 const CATS=["Unterrichtsvorbereitung","Korrektur","Kommunikation","Stufenleitung","Organisation","Konferenz","Elterngespräch","Exkursion"];
 const TEACH=["Unterricht","Exkursion"];
 const CAT_STYLE={"Unterrichtsvorbereitung":["#CFE8DA","#1E4D3A"],"Kommunikation":["#D6E4F7","#1F3F6E"],"Stufenleitung":["#E6D9F3","#4B2E6B"],"Organisation":["#FBE3C6","#6B3F0E"],"Konferenz":["#F7D6D6","#6E2626"],"Elterngespräch":["#D5EDF0","#1F5560"],"Korrektur":["#F3E7BF","#5F4E0E"],"Exkursion":["#E3E8D3","#3F4B2B"],"Unterricht":["#E6E6E1","#4A4A46"],"Krank":["#ECECEA","#5A5A56"]};
@@ -321,20 +321,27 @@ async function init(){
   S.plan=normPlan(null);
   loadLocal();render();
   if(navigator.serviceWorker&&navigator.serviceWorker.register){navigator.serviceWorker.register("./sw.js").catch(()=>{})}
-  if(!FIREBASE_CONFIG.apiKey||FIREBASE_CONFIG.apiKey.indexOf("HIER")===0||typeof firebase==="undefined"){S.mode="local";setDot(false);showAuth(true);return}
-  firebase.initializeApp(FIREBASE_CONFIG);const auth=firebase.auth();const fs=firebase.firestore();
-  try{await fs.enablePersistence({synchronizeTabs:true})}catch(e){console.warn("Offline-Cache nicht verfügbar",e&&e.code)}
-  auth.onAuthStateChanged(user=>{
+  if(!FIREBASE_CONFIG.apiKey||FIREBASE_CONFIG.apiKey.indexOf("HIER")===0){S.mode="local";setDot(false);showAuth(true);return}
+  if(typeof firebase==="undefined"||!firebase.auth||!firebase.firestore){S.mode="local";setDot(false);showAuth(false);authErr({message:"Firebase-Skripte konnten nicht geladen werden (Netzwerk oder Firewall). Seite neu laden oder anderes Netz versuchen."});return}
+  let auth,fs;
+  try{firebase.initializeApp(FIREBASE_CONFIG);auth=firebase.auth();fs=firebase.firestore()}catch(e){console.error(e);showAuth(false);authErr({message:"Firebase-Start fehlgeschlagen: "+(e&&e.message||e)});return}
+  let gotState=false;
+  auth.onAuthStateChanged(user=>{gotState=true;
     unsubs.forEach(u=>{try{u()}catch(e){}});unsubs=[];if(S.weekUnsub){try{S.weekUnsub()}catch(e){}S.weekUnsub=null;S.subscribedWeek=null}
     if(!user){S.db=null;S.user=null;S.mode="local";setDot(false);showAuth(false);return}
     hideAuth();const base="users/"+user.uid+"/";S.user=user;S.db={doc:p=>fs.doc(base+p),collection:p=>fs.collection(base+p)};S.mode="sync";setDot(true);
-    const err=e=>{console.error(e);setDot(false)};
-    unsubs.push(S.db.doc("meta/courses").onSnapshot(s=>{if(s.exists)S.courses=(s.data().items||[]).slice();saveLocal();render()},err));
-    unsubs.push(S.db.doc("meta/settings").onSnapshot(s=>{if(s.exists)S.settings=normSettings(s.data());saveLocal();render()},err));
-    unsubs.push(S.db.doc("meta/timer").onSnapshot(s=>{const d=s.exists?s.data():null;S.timer=(d&&d.startedAt)?{activity:d.activity||"",startedAt:d.startedAt}:null;saveLocal();render()},err));
-    unsubs.push(S.db.doc("meta/stundenplan").onSnapshot(s=>{if(s.exists)S.plan=normPlan(s.data());saveLocal();render()},err));
-    S.ovLoaded=false;subscribeWeek(weekKeyOfDate(S.viewMonday));render();
-  });
+    const err=e=>{console.error(e);setDot(false);toast("Firestore: "+(e&&e.code||"Fehler")+". Regeln veröffentlicht?",null,null,5000)};
+    try{
+      unsubs.push(S.db.doc("meta/courses").onSnapshot(s=>{if(s.exists)S.courses=(s.data().items||[]).slice();saveLocal();render()},err));
+      unsubs.push(S.db.doc("meta/settings").onSnapshot(s=>{if(s.exists)S.settings=normSettings(s.data());saveLocal();render()},err));
+      unsubs.push(S.db.doc("meta/timer").onSnapshot(s=>{const d=s.exists?s.data():null;S.timer=(d&&d.startedAt)?{activity:d.activity||"",startedAt:d.startedAt}:null;saveLocal();render()},err));
+      unsubs.push(S.db.doc("meta/stundenplan").onSnapshot(s=>{if(s.exists)S.plan=normPlan(s.data());saveLocal();render()},err));
+      S.ovLoaded=false;subscribeWeek(weekKeyOfDate(S.viewMonday));
+    }catch(e){err(e)}
+    render();
+  },e=>{console.error(e);showAuth(false);authErr(e)});
+  setTimeout(()=>{if(!gotState){showAuth(false);authErr({message:"Keine Antwort von Firebase. Verbindung prüfen, dann Seite neu laden."})}},10000);
+  try{fs.enablePersistence({synchronizeTabs:true}).catch(e=>console.warn("Offline-Cache nicht verfügbar",e&&e.code))}catch(e){console.warn(e)}
   window.addEventListener("online",()=>setDot(!!S.db));window.addEventListener("offline",()=>setDot(false));
 }
 function showAuth(cfgMissing){const a=$("auth");a.classList.remove("hidden");$("authCfg").classList.toggle("hidden",!cfgMissing);$("authForm").classList.toggle("hidden",!!cfgMissing)}
@@ -342,8 +349,9 @@ function hideAuth(){$("auth").classList.add("hidden")}
 function authErr(e){const map={"auth/invalid-email":"E-Mail-Adresse prüfen.","auth/user-not-found":"Kein Konto mit dieser E-Mail. Erst registrieren.","auth/wrong-password":"Passwort falsch.","auth/invalid-credential":"E-Mail oder Passwort falsch.","auth/email-already-in-use":"Für diese E-Mail gibt es schon ein Konto. Bitte anmelden.","auth/weak-password":"Passwort zu kurz, mindestens 6 Zeichen.","auth/too-many-requests":"Zu viele Versuche, kurz warten.","auth/network-request-failed":"Keine Verbindung.","auth/missing-password":"Passwort fehlt."};
   const el=$("aErr");el.textContent=map[e&&e.code]||("Fehler: "+(e&&e.message||e));el.classList.remove("hidden")}
 function authBind(){const mail=()=>$("aMail").value.trim(),pass=()=>$("aPass").value;const clr=()=>$("aErr").classList.add("hidden");
-  $("aLogin").onclick=async()=>{clr();try{await firebase.auth().signInWithEmailAndPassword(mail(),pass())}catch(e){authErr(e)}};
-  $("aReg").onclick=async()=>{clr();try{await firebase.auth().createUserWithEmailAndPassword(mail(),pass());toast("Konto angelegt")}catch(e){authErr(e)}};
+  const busy=(b,on)=>{b.disabled=on;b.textContent=on?"Bitte warten…":b.dataset.label};$("aLogin").dataset.label="Anmelden";$("aReg").dataset.label="Registrieren";
+  $("aLogin").onclick=async()=>{clr();busy($("aLogin"),true);try{await firebase.auth().signInWithEmailAndPassword(mail(),pass())}catch(e){authErr(e)}busy($("aLogin"),false)};
+  $("aReg").onclick=async()=>{clr();busy($("aReg"),true);try{await firebase.auth().createUserWithEmailAndPassword(mail(),pass());toast("Konto angelegt")}catch(e){authErr(e)}busy($("aReg"),false)};
   $("aReset").onclick=async()=>{clr();if(!mail()){authErr({code:"auth/invalid-email"});return}try{await firebase.auth().sendPasswordResetEmail(mail());toast("E-Mail zum Zurücksetzen verschickt",null,null,4000)}catch(e){authErr(e)}};
   $("aPass").onkeydown=e=>{if(e.key==="Enter")$("aLogin").click()}}
 async function logout(){try{await firebase.auth().signOut()}catch(e){}S.courses=[];S.settings=normSettings(null);S.timer=null;S.plan=normPlan(null);S.weeks={};try{localStorage.removeItem(LS_KEY)}catch(e){}render()}

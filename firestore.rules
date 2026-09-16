@@ -1,9 +1,36 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Jede Nutzerin, jeder Nutzer liest und schreibt nur die eigenen Daten unter users/<eigene Nutzer-ID>/...
-    match /users/{uid}/{document=**} {
-      allow read, write: if request.auth != null && request.auth.uid == uid;
+
+    // Nur diese E-Mail-Adressen dürfen Daten lesen und schreiben.
+    // Weitere Nutzerinnen/Nutzer hier ergänzen, in Kleinbuchstaben, durch Komma getrennt.
+    function allowedUser() {
+      return request.auth != null
+        && request.auth.token.email != null
+        && request.auth.token.email.lower() in ['marius@scherer-lips.de'];
+    }
+    function isOwner(uid) { return request.auth != null && request.auth.uid == uid; }
+
+    // Stammdaten: Kurse, Einstellungen, Timer, Stundenplan
+    match /users/{uid}/meta/{doc} {
+      allow read: if isOwner(uid) && allowedUser();
+      allow write: if isOwner(uid) && allowedUser()
+        && doc in ['courses', 'settings', 'timer', 'stundenplan'];
+    }
+
+    // Eine Woche pro Dokument, Name z.B. 2026-W38
+    match /users/{uid}/weeks/{week} {
+      allow read: if isOwner(uid) && allowedUser();
+      allow write: if isOwner(uid) && allowedUser()
+        && week.matches('^[0-9]{4}-W[0-9]{2}$')
+        && request.resource.data.keys().hasOnly(['key', 'entries', 'planSkipped', 'cancelled'])
+        && request.resource.data.entries is list
+        && request.resource.data.entries.size() <= 400;
+    }
+
+    // Alles andere ist verboten.
+    match /{document=**} {
+      allow read, write: if false;
     }
   }
 }

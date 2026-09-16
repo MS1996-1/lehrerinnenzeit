@@ -1,5 +1,5 @@
 /* Lehrerzeit Service Worker: hält die App offline startbar. Bei Änderungen an index.html die VERSION erhöhen. */
-const VERSION = "lehrerzeit-v3";
+const VERSION = "lehrerzeit-v13";
 const SHELL = ["./", "./index.html", "./manifest.json", "./icon-192.png", "./icon-512.png"];
 self.addEventListener("install", e => {
   e.waitUntil(caches.open(VERSION).then(c => c.addAll(SHELL)).then(() => self.skipWaiting()));

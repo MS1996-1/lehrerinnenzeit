@@ -1,0 +1,598 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#F7F7F5">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Lehrer*innenZeit">
+<link rel="manifest" href="./manifest.json">
+<link rel="icon" href="./icon-192.png">
+<link rel="apple-touch-icon" href="./icon-192.png">
+<title>Lehrer*innenZeit</title>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#F7F7F5; --surface:#FFFFFF; --surface2:#EFEFEC; --line:#E3E3DF;
+  --ink:#141414; --ink2:#75756F; --accent:#1B5E4A; --danger:#B23A32; --bar:#E6E6E2;
+  --soft:#CFE8DA; --soft-ink:#1E4D3A; --fill:#8FC3A8; --warn-bg:#F7D6D6; --warn-ink:#6E2626;
+  --font:"Manrope","Segoe UI",Roboto,system-ui,sans-serif; --r:14px;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#101010; --surface:#191919; --surface2:#222221; --line:#2C2C2A;
+    --ink:#F2F2EF; --ink2:#9A9A93; --accent:#6FCFAF; --danger:#E4756D; --bar:#2A2A28;
+    --soft:#2A4A3C; --soft-ink:#BFE3CF; --fill:#5F9E80; --warn-bg:#4A2626; --warn-ink:#F1B8B8;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#101010; --surface:#191919; --surface2:#222221; --line:#2C2C2A;
+  --ink:#F2F2EF; --ink2:#9A9A93; --accent:#6FCFAF; --danger:#E4756D; --bar:#2A2A28;
+  --soft:#2A4A3C; --soft-ink:#BFE3CF; --fill:#5F9E80; --warn-bg:#4A2626; --warn-ink:#F1B8B8;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0}
+body{background:var(--bg);color:var(--ink);font-family:var(--font);font-size:16px;line-height:1.4;min-height:100vh;padding-bottom:40px}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer}
+h1,h2{margin:0;font-weight:700}
+.app{max-width:560px;margin:0 auto;padding:0 18px}
+.top{display:flex;align-items:center;justify-content:space-between;padding:18px 0 8px}
+.top h1{font-size:1rem;letter-spacing:.02em;text-transform:uppercase;color:var(--ink2);font-weight:700}
+.top .right{display:flex;align-items:center;gap:10px}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--ink2);opacity:.5}
+.dot.sync{background:var(--accent);opacity:1}
+.icon{background:none;border:none;padding:8px;border-radius:10px;color:var(--ink2);display:flex}
+.icon svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.banner{background:var(--soft);color:var(--soft-ink);border-radius:12px;padding:10px 14px;font-size:.85rem;font-weight:600;margin:4px 0 8px}
+.hidden{display:none}
+.seg{display:flex;background:var(--surface2);border-radius:12px;padding:4px;margin:6px 0 18px}
+.seg button{flex:1;border:none;background:none;padding:10px 4px;border-radius:9px;font-weight:600;color:var(--ink2);font-size:.92rem}
+.seg button.on{background:var(--surface);color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.08)}
+.wk{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.wk .nav{background:none;border:none;font-size:1.4rem;padding:4px 12px;color:var(--ink2)}
+.wk .title{text-align:center;background:none;border:none;font-weight:600;min-width:0}
+.wk .title small{display:block;color:var(--ink2);font-weight:500;font-size:.82rem}
+.hero{margin:6px 0 4px}
+.num{font-size:clamp(2.6rem,12vw,3.4rem);font-weight:800;letter-spacing:-.04em;line-height:1;font-variant-numeric:tabular-nums}
+.num span{font-size:.42em;font-weight:600;color:var(--ink2);letter-spacing:0;margin-left:6px}
+.hero .sub{color:var(--ink2);font-size:.9rem;margin-top:6px;display:flex;justify-content:space-between;align-items:center;gap:8px}
+.pill{border:1px solid var(--line);background:none;border-radius:20px;padding:4px 12px;font-size:.8rem;color:var(--ink2);white-space:nowrap}
+.pill.on{background:var(--soft);color:var(--soft-ink);border-color:var(--soft)}
+.prog{height:4px;background:var(--bar);border-radius:2px;margin:12px 0 18px;overflow:hidden}
+.prog div{height:100%;background:var(--fill);border-radius:2px}
+.days{display:grid;grid-template-columns:repeat(7,1fr);gap:8px;height:84px;align-items:end;margin-bottom:26px}
+.day{display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;gap:6px}
+.day .col{width:100%;background:var(--bar);border-radius:5px;min-height:3px}
+.day .col.f{background:var(--fill)}
+.day .col.t{outline:2px solid var(--accent);outline-offset:2px}
+.day small{font-size:.72rem;color:var(--ink2)}
+.day small.free{opacity:.4;text-decoration:line-through}
+.timer{background:var(--c,var(--soft));color:var(--ci,var(--soft-ink));border-radius:var(--r);padding:18px;display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:22px;min-width:0}
+.timer>div{min-width:0;flex:1}
+.timer .cat{font-weight:600;font-size:.9rem;opacity:.8;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.timer .clock{font-size:clamp(1.5rem,7.5vw,2.2rem);font-weight:800;letter-spacing:-.03em;font-variant-numeric:tabular-nums;line-height:1.1}
+.timer .stop{background:var(--surface);color:var(--ci,var(--soft-ink));border:none;border-radius:12px;padding:12px 18px;font-weight:700;flex:none}
+.lbl{font-size:.78rem;text-transform:uppercase;letter-spacing:.08em;color:var(--ink2);font-weight:700;margin:0 0 10px}
+.tiles{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-bottom:22px}
+.tile{position:relative;min-width:0;overflow:hidden;background:var(--c,var(--surface));color:var(--ci,var(--ink));border:1px solid transparent;border-radius:var(--r);padding:14px 12px 12px;text-align:left;display:flex;flex-direction:column;justify-content:space-between;gap:10px;min-height:88px;transition:transform .08s}
+.tile:active{transform:scale(.98)}
+.tile .n{font-weight:700;font-size:.9rem;line-height:1.2;padding-right:30px;overflow-wrap:anywhere;hyphens:auto;-webkit-hyphens:auto}
+.tile .s{font-size:.82rem;color:var(--ci,var(--ink2));opacity:.75;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tile .add{position:absolute;top:8px;right:8px;width:28px;height:28px;border-radius:50%;border:none;background:rgba(255,255,255,.55);color:var(--ci,var(--ink2));font-size:1.2rem;line-height:1;display:flex;align-items:center;justify-content:center}
+.tile.live{border-color:var(--ci,var(--accent));box-shadow:inset 0 0 0 1px var(--ci,var(--accent))}
+.toggle{display:flex;justify-content:space-between;align-items:center;width:100%;background:none;border:none;padding:16px 0 6px;cursor:pointer;margin:0}
+.toggle .chev{display:inline-block;font-size:1.3rem;line-height:1;transform:rotate(90deg);transition:transform .15s;color:var(--ink2)}
+.toggle .chev.up{transform:rotate(-90deg)}
+.list .dh{display:flex;justify-content:space-between;color:var(--ink2);font-size:.82rem;font-weight:600;margin:16px 0 4px}
+.row{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--line);background:none;border-left:none;border-right:none;border-top:none;width:100%;text-align:left}
+.row .m{width:8px;align-self:stretch;border-radius:4px;background:var(--bar);flex:none}
+.row .t{flex:1;min-width:0}
+.row .t b{display:block;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.row .t small{color:var(--ink2);font-size:.82rem}
+.row .d{font-variant-numeric:tabular-nums;font-weight:600}
+.row.off .t,.row.off .d{opacity:.45}
+.row.off .t b{text-decoration:line-through}
+.empty{color:var(--ink2);text-align:center;padding:24px 0;font-size:.92rem}
+.ov{padding-top:10px}
+.ov .num{font-size:clamp(3rem,15vw,4.2rem)}
+.ov .sub{color:var(--ink2);font-size:.9rem;margin:10px 0 26px}
+.ov2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.ov2>*{background:var(--c);color:var(--ci);border-radius:var(--r);padding:16px 14px;min-width:0;border:none;text-align:left;font:inherit;display:block;appearance:none;-webkit-appearance:none;margin:0;width:100%}
+.ov2 small{display:block;font-size:.82rem;font-weight:600;opacity:.8;margin-bottom:8px}
+.ov2 b{font-size:1.7rem;font-weight:800;letter-spacing:-.03em;font-variant-numeric:tabular-nums}
+.ov2 b span{font-size:.45em;font-weight:600;opacity:.7;margin-left:4px}
+.bars{position:relative;display:flex;gap:4px;align-items:flex-end;margin:0 0 6px}
+.bars .bar{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:3px;height:100%;min-width:0;position:relative;z-index:1}
+.bars .bar div{width:100%;background:var(--fill);border-radius:4px 4px 2px 2px}
+.bars .bar.part div{background:var(--fill);opacity:.45}
+.bars .bar.hol div{background:var(--bar)}
+.bars .bar.miss div{background:var(--warn-bg)}
+.bars em{font-style:normal;font-size:.68rem;font-weight:700;font-variant-numeric:tabular-nums;color:var(--ink);line-height:1}
+.bars .bar.hol em,.bars .bar.part em{color:var(--ink2);font-weight:600}
+.bars small{font-size:.62rem;color:var(--ink2);line-height:1}
+.bars .soll{position:absolute;left:0;right:0;border-top:1px dashed var(--ink2);z-index:0;opacity:.6}
+.bars .soll span{position:absolute;right:0;top:-14px;font-size:.62rem;color:var(--ink2);background:var(--bg);padding:0 3px}
+.legend{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:.72rem;color:var(--ink2);margin:0 0 20px}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:-1px;background:var(--fill)}
+.legend .l2{background:var(--fill);opacity:.45}.legend .l3{background:var(--bar)}.legend .l4{background:var(--warn-bg)}
+.ov2 button{cursor:pointer}
+.bd div{display:flex;align-items:center;gap:10px;padding:12px 14px;margin-bottom:8px;border-radius:12px;background:var(--c);color:var(--ci)}
+.bd .t{flex:1;font-weight:600}
+.bd .pct{opacity:.7;font-size:.85rem;font-variant-numeric:tabular-nums}
+.bd b{font-variant-numeric:tabular-nums;min-width:64px;text-align:right;font-weight:800}
+.year{margin-top:30px;padding-top:22px;border-top:1px solid var(--line)}
+.year .num{font-size:clamp(2.2rem,10vw,2.8rem)}
+.year .sub{margin:8px 0 0}
+.warn{margin-top:22px;background:var(--warn-bg);color:var(--warn-ink);border-radius:12px;padding:12px 14px;font-size:.9rem;font-weight:600}
+.warn small{display:block;font-weight:500;margin-top:2px;opacity:.9}
+.wkchips{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.wkchips button{border:none;background:var(--surface);color:var(--warn-ink);border-radius:10px;padding:8px 12px;font-weight:700;font-size:.85rem}
+.grid{display:grid;grid-template-columns:44px repeat(5,minmax(0,1fr));gap:4px;margin-bottom:14px}
+.grid .h{text-align:center;font-size:.78rem;color:var(--ink2);font-weight:700;padding:4px 0}
+.grid .tm{font-size:.7rem;color:var(--ink2);display:flex;flex-direction:column;justify-content:center;line-height:1.15;padding-right:2px}
+.grid .tm b{font-size:.85rem;color:var(--ink)}
+.cell{min-width:0;overflow:hidden;hyphens:auto;-webkit-hyphens:auto;border:1px dashed var(--line);background:none;border-radius:8px;min-height:48px;font-size:.78rem;font-weight:700;color:#fff;padding:4px;line-height:1.15;word-break:break-word}
+.cell.f{border-style:solid;border-color:transparent;touch-action:none;user-select:none;-webkit-user-select:none}
+.cell.drag{opacity:.5;transform:scale(.96)}
+.cell.over{outline:2px solid var(--accent);outline-offset:1px}
+.link{background:none;border:none;color:var(--accent);font-weight:600;padding:8px 0;font-size:.92rem}
+.vers{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 14px;align-items:center}
+.vers .pill{padding:6px 12px}
+.courses{display:flex;flex-wrap:wrap;gap:8px;margin:6px 0 20px}
+.chip{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line);border-radius:20px;padding:8px 12px;background:var(--surface);font-weight:600;font-size:.9rem}
+.chip i{width:10px;height:10px;border-radius:50%;display:inline-block}
+.chip.x{padding:8px 10px;color:var(--ink2);font-weight:400}
+.sheet-bg{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:20;display:flex;align-items:flex-end;justify-content:center}
+.sheet{background:var(--surface);width:100%;max-width:560px;border-radius:20px 20px 0 0;padding:20px 20px calc(24px + env(safe-area-inset-bottom));max-height:92vh;overflow:auto}
+.sheet h2{font-size:1.15rem;margin-bottom:4px}
+.sheet .sub{color:var(--ink2);font-size:.9rem;margin-bottom:16px}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 14px}
+.chips button{border:1px solid var(--line);background:var(--surface2);border-radius:12px;padding:12px 8px;font-weight:600;min-width:0}
+#dur{display:grid;grid-template-columns:repeat(4,minmax(0,1fr))}
+.chips button.on{background:var(--soft);color:var(--soft-ink);border-color:var(--soft)}
+.field{margin:10px 0}
+.field label{display:block;font-size:.8rem;color:var(--ink2);margin-bottom:6px;font-weight:600}
+input[type=date],input[type=time],input[type=number],input[type=text]{width:100%;border:1px solid var(--line);background:var(--surface2);border-radius:12px;padding:12px 14px;min-height:46px}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.acts{display:flex;gap:10px;margin-top:18px}
+.btn{flex:1;border:none;border-radius:12px;padding:14px;font-weight:700;background:var(--surface2)}
+.btn.p{background:var(--soft);color:var(--soft-ink)}
+.btn.dg{background:none;color:var(--danger);flex:0 0 auto;padding:14px 10px}
+.frees{margin:6px 0 4px}
+.frees div{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 0;border-bottom:1px solid var(--line);font-size:.92rem}
+.frees div small{display:block;color:var(--ink2);font-size:.82rem}
+.frees button{background:none;border:none;color:var(--danger);font-weight:700;padding:6px 8px}
+.auth{position:fixed;inset:0;background:var(--bg);z-index:40;display:flex;align-items:flex-start;justify-content:center;padding:60px 18px 20px;overflow:auto}
+.authbox{width:100%;max-width:400px}
+.authbox .sub{color:var(--ink2);margin:8px 0 18px}
+.err{background:var(--warn-bg);color:var(--warn-ink);border-radius:12px;padding:10px 14px;font-size:.9rem;margin-top:8px}
+input[type=email],input[type=password]{width:100%;border:1px solid var(--line);background:var(--surface2);border-radius:12px;padding:12px 14px;min-height:46px}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:28px;max-width:calc(100% - 36px);background:var(--soft-ink);color:var(--soft);padding:10px 16px;border-radius:12px;font-size:.9rem;line-height:1.3;z-index:30;opacity:0;transition:opacity .2s;pointer-events:none;display:flex;align-items:center;gap:12px;white-space:nowrap}
+.toast.show{opacity:1}
+.toast.act{pointer-events:auto;padding-right:10px}
+.toast button{margin:0;border:none;background:var(--soft);color:var(--soft-ink);border-radius:8px;padding:6px 10px;font-weight:700;font-size:.85rem;line-height:1.2;flex:none}
+.note{font-size:.85rem;color:var(--ink2);margin-top:14px}
+.tt{width:100%;border-collapse:collapse}
+.tt td{padding:4px 4px 4px 0}
+.tt td:first-child{color:var(--ink2);white-space:nowrap;font-size:.85rem}
+textarea{width:100%;border:1px solid var(--line);background:var(--surface2);border-radius:12px;padding:12px;font:inherit;color:inherit}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="top">
+    <h1>Lehrer*innenZeit</h1>
+    <div class="right"><span class="dot" id="dot"></span>
+      <button class="icon" id="gear" aria-label="Einstellungen"><svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/><circle cx="9" cy="7" r="2" fill="var(--bg)"/><circle cx="15" cy="12" r="2" fill="var(--bg)"/><circle cx="10" cy="17" r="2" fill="var(--bg)"/></svg></button></div>
+  </div>
+  <div class="seg"><button data-tab="woche" class="on">Woche</button><button data-tab="ueb">Übersicht</button><button data-tab="plan">Stundenplan</button></div>
+  <div id="view"></div>
+</div>
+<div id="auth" class="auth hidden">
+  <div class="authbox">
+    <h1 style="font-size:1.6rem;letter-spacing:-.02em;text-transform:none;color:var(--ink)">Lehrer*innenZeit</h1>
+    <p class="sub" id="authSub">Anmelden, damit Handy, Rechner und Tablet denselben Stand zeigen.</p>
+    <div id="authForm">
+      <div class="field"><label>E-Mail</label><input type="email" id="aMail" autocomplete="username" inputmode="email"></div>
+      <div class="field"><label>Passwort</label><input type="password" id="aPass" autocomplete="current-password"></div>
+      <div class="err hidden" id="aErr"></div>
+      <div class="acts"><button class="btn" id="aReg">Registrieren</button><button class="btn p" id="aLogin">Anmelden</button></div>
+      <button class="link" id="aReset" style="margin-top:8px">Passwort vergessen</button>
+    </div>
+    <div id="authCfg" class="hidden err">Firebase-Konfiguration fehlt. In index.html den Block FIREBASE_CONFIG ausfüllen (siehe Anleitung, Schritt 5).</div>
+  </div>
+</div>
+<div id="sheetRoot"></div>
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+"use strict";
+/* ===== Firebase-Konfiguration ===== */
+const FIREBASE_CONFIG={
+  apiKey:"AIzaSyDd1gsgn3pMdT_rZdC8DEn4rx8aCfLFozk",
+  authDomain:"lehrinnenzeit.firebaseapp.com",
+  projectId:"lehrinnenzeit",
+  storageBucket:"lehrinnenzeit.firebasestorage.app",
+  messagingSenderId:"254538553585",
+  appId:"1:254538553585:web:3d2a9feac2885fcc613150"
+};
+/* ================================== */
+const CATS=["Unterrichtsvorbereitung","Korrektur","Kommunikation","Stufenleitung","Organisation","Konferenz","Elterngespräch","Exkursion"];
+const TEACH=["Unterricht","Exkursion"];
+const CAT_STYLE={"Unterrichtsvorbereitung":["#CFE8DA","#1E4D3A"],"Kommunikation":["#D6E4F7","#1F3F6E"],"Stufenleitung":["#E6D9F3","#4B2E6B"],"Organisation":["#FBE3C6","#6B3F0E"],"Konferenz":["#F7D6D6","#6E2626"],"Elterngespräch":["#D5EDF0","#1F5560"],"Korrektur":["#F3E7BF","#5F4E0E"],"Exkursion":["#E3E8D3","#3F4B2B"],"Unterricht":["#E6E6E1","#4A4A46"],"Krank":["#ECECEA","#5A5A56"]};
+const PALETTE=["#1F6FB2","#C2412D","#2E8B57","#B8860B","#7B4FA6","#D2691E","#178F8F","#8B3A62","#5F7A2E","#4B5563"];
+const DEFAULT_RASTER=[["08:00","08:45"],["08:50","09:35"],["09:55","10:40"],["10:45","11:30"],["11:50","12:35"],["12:40","13:25"],["14:00","14:45"],["14:50","15:35"]];
+const LS_KEY="lehrerzeit-v1";const WD=["Mo","Di","Mi","Do","Fr","Sa","So"];const WDL=["Montag","Dienstag","Mittwoch","Donnerstag","Freitag","Samstag","Sonntag"];
+const MONTHS=["Jan.","Feb.","März","Apr.","Mai","Juni","Juli","Aug.","Sep.","Okt.","Nov.","Dez."];
+/* Schulferien NRW laut Ferienordnung des Schulministeriums (Stand Sept. 2026); 2025/26 aus dem Vorjahreskalender */
+const NRW_FERIEN=[
+ ["2025-10-13","2025-10-25","Herbstferien"],["2025-12-22","2026-01-06","Weihnachtsferien"],["2026-03-30","2026-04-11","Osterferien"],["2026-05-26","2026-05-26","Pfingstferien"],["2026-07-20","2026-09-01","Sommerferien"],
+ ["2026-10-17","2026-10-31","Herbstferien"],["2026-12-23","2027-01-06","Weihnachtsferien"],["2027-03-22","2027-04-03","Osterferien"],["2027-05-18","2027-05-18","Pfingstferien"],["2027-07-19","2027-08-31","Sommerferien"],
+ ["2027-10-23","2027-11-06","Herbstferien"],["2027-12-24","2028-01-08","Weihnachtsferien"],["2028-04-10","2028-04-22","Osterferien"],["2028-07-10","2028-08-22","Sommerferien"],
+ ["2028-10-23","2028-11-04","Herbstferien"],["2028-12-21","2029-01-05","Weihnachtsferien"],["2029-03-26","2029-04-07","Osterferien"],["2029-05-22","2029-05-22","Pfingstferien"],["2029-07-02","2029-08-14","Sommerferien"],
+ ["2029-10-15","2029-10-27","Herbstferien"],["2029-12-20","2030-01-04","Weihnachtsferien"],["2030-04-15","2030-04-27","Osterferien"],["2030-06-24","2030-08-06","Sommerferien"]];
+
+const S={courses:[],settings:{weeklyTarget:41,free:[]},timer:null,plan:{versions:[]},weeks:{},tab:"woche",viewMonday:mondayOf(new Date()),planSel:null,db:null,downloads:null,mode:"init",weekUnsub:null,subscribedWeek:null,ovLoaded:false};
+
+/* Helfer */
+function pad(n){return (n<10?"0":"")+n}
+function ymd(d){return d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate())}
+function parseYmd(s){const [y,m,d]=s.split("-").map(Number);return new Date(y,m-1,d)}
+function hm(d){return pad(d.getHours())+":"+pad(d.getMinutes())}
+function mondayOf(d){const x=new Date(d.getFullYear(),d.getMonth(),d.getDate());x.setDate(x.getDate()-((x.getDay()+6)%7));return x}
+function addDays(d,n){const x=new Date(d);x.setDate(x.getDate()+n);return x}
+function isoWeek(d){const x=new Date(Date.UTC(d.getFullYear(),d.getMonth(),d.getDate()));const day=x.getUTCDay()||7;x.setUTCDate(x.getUTCDate()+4-day);const y=x.getUTCFullYear();return {year:y,week:Math.ceil((((x-Date.UTC(y,0,1))/86400000)+1)/7)}}
+function weekKeyOf(s){return weekKeyOfDate(parseYmd(s))}
+function weekKeyOfDate(d){const w=isoWeek(d);return w.year+"-W"+pad(w.week)}
+function mondayOfKey(k){const y=Number(k.slice(0,4)),w=Number(k.slice(6));return addDays(mondayOf(new Date(y,0,4)),(w-1)*7)}
+function fmtMin(m){return Math.floor(m/60)+":"+pad(Math.round(m%60))}
+function fmtDec(m){return (m/60).toFixed(1).replace(".",",")}
+function fmtDateShort(d){return d.getDate()+". "+MONTHS[d.getMonth()]}
+function fmtDate(s){const d=parseYmd(s);return d.getDate()+"."+(d.getMonth()+1)+"."+d.getFullYear()}
+function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,7)}
+function esc(s){return String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
+function parseHours(v){v=String(v||"").trim().replace(",",".");if(!v)return 0;if(v.includes(":")){const [h,m]=v.split(":").map(Number);return Math.round((h||0)*60+(m||0))}const n=Number(v);return isNaN(n)?0:Math.round(n*60)}
+function minutesBetween(a,b){if(!a||!b)return 0;const [sh,sm]=a.split(":").map(Number),[eh,em]=b.split(":").map(Number);let m=(eh*60+em)-(sh*60+sm);if(m<0)m+=1440;return m}
+function courseById(id){return S.courses.find(c=>c.id===id)||null}
+function courseName(id){const c=courseById(id);return c?c.name:"Unterricht"}
+function courseColor(id){const c=courseById(id);return c?c.color:"#8A8A84"}
+const dark=()=>{const t=document.documentElement.getAttribute("data-theme");if(t==="dark")return true;if(t==="light")return false;return !!(window.matchMedia&&window.matchMedia("(prefers-color-scheme: dark)").matches)};
+function catVars(cat){const st=CAT_STYLE[cat]||["#E6E6E1","#4A4A46"];return dark()?`--c:${st[1]}CC;--ci:${st[0]}`:`--c:${st[0]};--ci:${st[1]}`}
+function catMark(cat){const st=CAT_STYLE[cat]||["#E6E6E1","#4A4A46"];return dark()?st[1]:st[0]}
+
+/* Feiertage NRW */
+function easter(y){const a=y%19,b=Math.floor(y/100),c=y%100,d=Math.floor(b/4),e=b%4,f=Math.floor((b+8)/25),g=Math.floor((b-f+1)/3),h=(19*a+b-d-g+15)%30,i=Math.floor(c/4),k=c%4,l=(32+2*e+2*i-h-k)%7,m=Math.floor((a+11*h+22*l)/451),mo=Math.floor((h+l-7*m+114)/31),da=((h+l-7*m+114)%31)+1;return new Date(y,mo-1,da)}
+const holCache={};
+function holidays(y){if(holCache[y])return holCache[y];const e=easter(y),o=(n,name)=>[ymd(addDays(e,n)),name];const h={};
+  [[y+"-01-01","Neujahr"],o(-2,"Karfreitag"),o(1,"Ostermontag"),[y+"-05-01","Tag der Arbeit"],o(39,"Christi Himmelfahrt"),o(50,"Pfingstmontag"),o(60,"Fronleichnam"),[y+"-10-03","Tag der Deutschen Einheit"],[y+"-11-01","Allerheiligen"],[y+"-12-25","1. Weihnachtstag"],[y+"-12-26","2. Weihnachtstag"]].forEach(([d,n])=>h[d]=n);holCache[y]=h;return h}
+/* frei? → Bezeichnung oder null */
+function freeInfo(ds){const hol=holidays(Number(ds.slice(0,4)))[ds];if(hol)return {label:hol,type:"free"};
+  for(const r of NRW_FERIEN)if(ds>=r[0]&&ds<=r[1])return {label:r[2]+" NRW",type:"free"};
+  for(const r of (S.settings.free||[]))if(ds>=r.from&&ds<=r.to)return {label:r.label||(r.type==="sick"?"Krank":"frei"),type:r.type==="sick"?"sick":"free"};
+  const w=S.weeks[weekKeyOf(ds)];if(w&&w.planSkipped)return {label:"Ferien",type:"free"};return null}
+function freeDays(key){const mon=mondayOfKey(key);const out=[];for(let i=0;i<7;i++){out.push(freeInfo(ymd(addDays(mon,i))))}return out}
+function isHolidayWeek(key){const f=freeDays(key);return f.slice(0,5).every(x=>x&&x.type==="free")}
+function sickMinutes(){return Math.round(S.settings.weeklyTarget*60/5)}
+function sickEntries(key){const mon=mondayOfKey(key);const t=ymd(new Date());const out=[];const f=freeDays(key);for(let d=0;d<5;d++){if(f[d]&&f[d].type==="sick"){const ds=ymd(addDays(mon,d));if(ds<=t)out.push({id:"sick:"+ds,sick:true,date:ds,start:"",end:"",minutes:sickMinutes(),courseId:"",activity:"Krank"})}}return out}
+
+/* Stundenplan-Versionen */
+function normPlan(p){let vs=[];if(p&&Array.isArray(p.versions))vs=p.versions.map(v=>({id:v.id||uid(),from:v.from||null,items:Array.isArray(v.items)?v.items.slice():[],raster:normRaster(v.raster)}));
+  else if(p&&Array.isArray(p.items))vs=[{id:"v0",from:null,items:p.items.slice(),raster:normRaster(p.raster)}];
+  if(!vs.length)vs=[{id:"v0",from:null,items:[],raster:normRaster(null)}];
+  vs.sort((a,b)=>(a.from||"")<(b.from||"")?-1:1);return {versions:vs}}
+function normRaster(r){return Array.isArray(r)&&r.length?r.map(x=>[x[0]||"",x[1]||""]):DEFAULT_RASTER.map(x=>x.slice())}
+function versionFor(ds){let v=null;for(const x of S.plan.versions){if(!x.from||x.from<=ds)v=x;else break}return v}
+function currentVersion(){if(S.planSel){const v=S.plan.versions.find(x=>x.id===S.planSel);if(v)return v}return versionFor(ymd(new Date()))||S.plan.versions[0]}
+function itemTimes(it,r){const f=it.from?r[it.from-1]:null,t=it.to?r[it.to-1]:(f||null);return {start:f?f[0]:it.start,end:t?t[1]:it.end}}
+function planEntriesForWeek(key){const w=S.weeks[key];const mon=mondayOfKey(key);const out=[];const canc=(w&&w.cancelled)||[];const free=freeDays(key);
+  for(let d=0;d<5;d++){const ds=ymd(addDays(mon,d));if(free[d])continue;const v=versionFor(ds);if(!v)continue;
+    v.items.filter(it=>it.day===d).forEach(it=>{const {start,end}=itemTimes(it,v.raster);const m=minutesBetween(start,end);if(m<1)return;
+      out.push({id:"plan:"+it.id+":"+ds,planId:it.id,plan:true,cancelled:canc.includes(it.id),date:ds,start,end,minutes:m,courseId:it.courseId||"",activity:"Unterricht"})})}
+  return out}
+function effectiveEntries(key){const t=ymd(new Date());return ((S.weeks[key]&&S.weeks[key].entries)||[]).concat(planEntriesForWeek(key).filter(p=>!p.cancelled&&p.date<=t)).concat(sickEntries(key))}
+
+/* Persistenz */
+const chain={};
+function chained(k,fn){const p=(chain[k]||Promise.resolve()).then(fn,fn).catch(e=>{console.error(e);toast("Speichern fehlgeschlagen")});chain[k]=p;return p}
+function weekFromDoc(key,d){return {key,entries:(d&&d.entries||[]).slice(),planSkipped:!!(d&&d.planSkipped),cancelled:(d&&d.cancelled||[]).slice()}}
+function normSettings(d){return {weeklyTarget:Number(d&&d.weeklyTarget)||41,free:Array.isArray(d&&d.free)?d.free.filter(r=>r&&r.from&&r.to).map(r=>({id:r.id||uid(),from:r.from,to:r.to,label:r.label||"",type:r.type==="sick"?"sick":"free"})):[]}}
+function saveLocal(){try{localStorage.setItem(LS_KEY,JSON.stringify({courses:S.courses,settings:S.settings,timer:S.timer,plan:S.plan,weeks:S.weeks}))}catch(e){}}
+function loadLocal(){try{const o=JSON.parse(localStorage.getItem(LS_KEY)||"null");if(!o)return;if(o.courses)S.courses=o.courses;S.settings=normSettings(o.settings);S.timer=o.timer||null;S.plan=normPlan(o.plan);if(o.weeks){S.weeks={};Object.keys(o.weeks).forEach(k=>S.weeks[k]=weekFromDoc(k,o.weeks[k]))}}catch(e){}}
+function persistCourses(){if(S.db)return chained("courses",()=>S.db.doc("meta/courses").set({items:S.courses}));saveLocal();return Promise.resolve()}
+function persistSettings(){if(S.db)return chained("settings",()=>S.db.doc("meta/settings").set(S.settings));saveLocal();return Promise.resolve()}
+function persistTimer(){if(S.db)return chained("timer",()=>S.db.doc("meta/timer").set(S.timer||{}));saveLocal();return Promise.resolve()}
+function persistPlan(){if(S.db)return chained("plan",()=>S.db.doc("meta/stundenplan").set({versions:S.plan.versions}));saveLocal();return Promise.resolve()}
+function persistWeek(key){const w=S.weeks[key];if(!w)return Promise.resolve();if(S.db)return chained("w:"+key,()=>S.db.doc("weeks/"+key).set({key,entries:w.entries,planSkipped:!!w.planSkipped,cancelled:w.cancelled||[]}));saveLocal();return Promise.resolve()}
+async function ensureWeek(key){if(S.weeks[key])return S.weeks[key];if(S.db){try{const s=await S.db.doc("weeks/"+key).get();if(s.exists){S.weeks[key]=weekFromDoc(key,s.data());return S.weeks[key]}}catch(e){console.error(e)}}S.weeks[key]=weekFromDoc(key,null);return S.weeks[key]}
+function subscribeWeek(key){if(!S.db||S.subscribedWeek===key)return;if(S.weekUnsub){S.weekUnsub();S.weekUnsub=null}S.subscribedWeek=key;
+  S.weekUnsub=S.db.doc("weeks/"+key).onSnapshot(s=>{if(s.exists)S.weeks[key]=weekFromDoc(key,s.data());else if(!S.weeks[key])S.weeks[key]=weekFromDoc(key,null);if(S.tab==="woche")render()},e=>{console.error(e);setDot(false)})}
+async function weeksInRange(fk,tk){const out={};Object.values(S.weeks).forEach(w=>{if(w.key>=fk&&w.key<=tk)out[w.key]=w});
+  if(S.db){try{const snap=await S.db.collection("weeks").where("key",">=",fk).where("key","<=",tk).get();snap.docs.forEach(d=>{const x=d.data();if(x&&x.key){const w=weekFromDoc(x.key,x);out[x.key]=w;if(x.key!==S.subscribedWeek)S.weeks[x.key]=w}})}catch(e){console.error(e)}}return out}
+let unsubs=[];
+async function init(){
+  S.plan=normPlan(null);
+  loadLocal();render();
+  if(navigator.serviceWorker&&navigator.serviceWorker.register){navigator.serviceWorker.register("./sw.js").catch(()=>{})}
+  if(!FIREBASE_CONFIG.apiKey||FIREBASE_CONFIG.apiKey.indexOf("HIER")===0||typeof firebase==="undefined"){S.mode="local";setDot(false);showAuth(true);return}
+  firebase.initializeApp(FIREBASE_CONFIG);const auth=firebase.auth();const fs=firebase.firestore();
+  try{await fs.enablePersistence({synchronizeTabs:true})}catch(e){console.warn("Offline-Cache nicht verfügbar",e&&e.code)}
+  auth.onAuthStateChanged(user=>{
+    unsubs.forEach(u=>{try{u()}catch(e){}});unsubs=[];if(S.weekUnsub){try{S.weekUnsub()}catch(e){}S.weekUnsub=null;S.subscribedWeek=null}
+    if(!user){S.db=null;S.user=null;S.mode="local";setDot(false);showAuth(false);return}
+    hideAuth();const base="users/"+user.uid+"/";S.user=user;S.db={doc:p=>fs.doc(base+p),collection:p=>fs.collection(base+p)};S.mode="sync";setDot(true);
+    const err=e=>{console.error(e);setDot(false)};
+    unsubs.push(S.db.doc("meta/courses").onSnapshot(s=>{if(s.exists)S.courses=(s.data().items||[]).slice();saveLocal();render()},err));
+    unsubs.push(S.db.doc("meta/settings").onSnapshot(s=>{if(s.exists)S.settings=normSettings(s.data());saveLocal();render()},err));
+    unsubs.push(S.db.doc("meta/timer").onSnapshot(s=>{const d=s.exists?s.data():null;S.timer=(d&&d.startedAt)?{activity:d.activity||"",startedAt:d.startedAt}:null;saveLocal();render()},err));
+    unsubs.push(S.db.doc("meta/stundenplan").onSnapshot(s=>{if(s.exists)S.plan=normPlan(s.data());saveLocal();render()},err));
+    S.ovLoaded=false;subscribeWeek(weekKeyOfDate(S.viewMonday));render();
+  });
+  window.addEventListener("online",()=>setDot(!!S.db));window.addEventListener("offline",()=>setDot(false));
+}
+function showAuth(cfgMissing){const a=$("auth");a.classList.remove("hidden");$("authCfg").classList.toggle("hidden",!cfgMissing);$("authForm").classList.toggle("hidden",!!cfgMissing)}
+function hideAuth(){$("auth").classList.add("hidden")}
+function authErr(e){const map={"auth/invalid-email":"E-Mail-Adresse prüfen.","auth/user-not-found":"Kein Konto mit dieser E-Mail. Erst registrieren.","auth/wrong-password":"Passwort falsch.","auth/invalid-credential":"E-Mail oder Passwort falsch.","auth/email-already-in-use":"Für diese E-Mail gibt es schon ein Konto. Bitte anmelden.","auth/weak-password":"Passwort zu kurz, mindestens 6 Zeichen.","auth/too-many-requests":"Zu viele Versuche, kurz warten.","auth/network-request-failed":"Keine Verbindung.","auth/missing-password":"Passwort fehlt."};
+  const el=$("aErr");el.textContent=map[e&&e.code]||("Fehler: "+(e&&e.message||e));el.classList.remove("hidden")}
+function authBind(){const mail=()=>$("aMail").value.trim(),pass=()=>$("aPass").value;const clr=()=>$("aErr").classList.add("hidden");
+  $("aLogin").onclick=async()=>{clr();try{await firebase.auth().signInWithEmailAndPassword(mail(),pass())}catch(e){authErr(e)}};
+  $("aReg").onclick=async()=>{clr();try{await firebase.auth().createUserWithEmailAndPassword(mail(),pass());toast("Konto angelegt")}catch(e){authErr(e)}};
+  $("aReset").onclick=async()=>{clr();if(!mail()){authErr({code:"auth/invalid-email"});return}try{await firebase.auth().sendPasswordResetEmail(mail());toast("E-Mail zum Zurücksetzen verschickt",null,null,4000)}catch(e){authErr(e)}};
+  $("aPass").onkeydown=e=>{if(e.key==="Enter")$("aLogin").click()}}
+async function logout(){try{await firebase.auth().signOut()}catch(e){}S.courses=[];S.settings=normSettings(null);S.timer=null;S.plan=normPlan(null);S.weeks={};try{localStorage.removeItem(LS_KEY)}catch(e){}render()}
+function setDot(ok){const d=document.getElementById("dot");const on=ok&&navigator.onLine!==false;d.className="dot"+(on?" sync":"");d.title=on?"synchron":(ok?"offline, wird später synchronisiert":"nicht angemeldet")}
+
+/* Timer + Einträge */
+let tick=null;
+async function beginTimer(cat){S.timer={activity:cat,startedAt:new Date().toISOString()};render();await persistTimer()}
+async function startTimer(cat){if(S.timer){await stopTimer(()=>beginTimer(cat));return}await beginTimer(cat)}
+async function stopTimer(then){if(!S.timer)return;const t=S.timer,st=new Date(t.startedAt),en=new Date();let m=Math.round((en-st)/60000);if(m<1)m=1;
+  if(m>240){openLongTimer(t,m,then);return}await finishTimer(t,m);if(then)await then()}
+async function finishTimer(t,m){const st=new Date(t.startedAt);S.timer=null;await persistTimer();const e={id:uid(),date:ymd(st),start:hm(st),end:hm(new Date(st.getTime()+m*60000)),minutes:m,courseId:"",activity:t.activity};await addEntry(e);undoToast(t.activity+": "+fmtMin(m)+" h gespeichert",e)}
+function undoToast(msg,e){toast(msg,"Rückgängig",async()=>{await deleteEntry(e.date,e.id);toast("Eintrag entfernt")},3000)}
+function openLongTimer(t,m,then){open(`<h2>Wirklich ${fmtMin(m)} h?</h2><div class="sub">${esc(t.activity)}, gestartet ${hm(new Date(t.startedAt))} Uhr. Dauer prüfen oder korrigieren.</div>
+    <div class="field"><label>Stunden</label><input type="text" inputmode="decimal" id="ltH" value="${fmtMin(m)}"></div>
+    <div class="acts"><button class="btn dg" id="ltX">Verwerfen</button><button class="btn" id="ltC">Weiterlaufen</button><button class="btn p" id="ltS">Speichern</button></div>`);
+  $("ltC").onclick=close;$("ltX").onclick=async()=>{close();S.timer=null;await persistTimer();render();if(then)await then()};
+  $("ltS").onclick=async()=>{const mm=parseHours($("ltH").value);if(mm<1){toast("Dauer prüfen");return}close();await finishTimer(t,mm);if(then)await then()}}
+async function addEntry(e){const k=weekKeyOf(e.date);const w=await ensureWeek(k);w.entries=w.entries.concat([e]);S.ovLoaded=false;await persistWeek(k);render()}
+async function updateEntry(oldDate,e){const ok=weekKeyOf(oldDate),nk=weekKeyOf(e.date);const wo=await ensureWeek(ok);wo.entries=wo.entries.filter(x=>x.id!==e.id);
+  if(ok===nk){wo.entries=wo.entries.concat([e]);await persistWeek(ok)}else{await persistWeek(ok);const wn=await ensureWeek(nk);wn.entries=wn.entries.concat([e]);await persistWeek(nk)}render()}
+async function deleteEntry(date,id){const k=weekKeyOf(date);const w=await ensureWeek(k);w.entries=w.entries.filter(x=>x.id!==id);await persistWeek(k);render()}
+
+/* Rendering */
+const view=document.getElementById("view");const $=id=>document.getElementById(id);
+document.querySelectorAll(".seg button").forEach(b=>b.onclick=()=>{S.tab=b.dataset.tab;render()});
+$("gear").onclick=openSettings;
+function render(){document.querySelectorAll(".seg button").forEach(b=>b.classList.toggle("on",b.dataset.tab===S.tab));if(S.tab==="woche")renderWoche();else if(S.tab==="ueb")renderUeb();else renderPlan()}
+
+function ranges(idx){const parts=[];if(!idx.length)return parts;let s=idx[0],p=idx[0];for(let i=1;i<=idx.length;i++){if(idx[i]===p+1){p=idx[i];continue}parts.push(s===p?WD[s]:WD[s]+" bis "+WD[p]);s=idx[i];p=idx[i]}return parts}
+function freeSummary(free){const fi=free.slice(0,5).map((f,i)=>f&&f.type==="free"?i:-1).filter(i=>i>=0),si=free.slice(0,5).map((f,i)=>f&&f.type==="sick"?i:-1).filter(i=>i>=0);
+  if(fi.length===5)return "Ferien";const out=[];if(fi.length)out.push("frei "+ranges(fi).join(", "));if(si.length)out.push("krank "+ranges(si).join(", "));return out.length?out.join(" · "):null}
+
+function renderWoche(){
+  const mon=S.viewMonday,key=weekKeyOfDate(mon),sun=addDays(mon,6),today=ymd(new Date());subscribeWeek(key);
+  const wk=S.weeks[key]||{entries:[],cancelled:[]};const free=freeDays(key);const fs=freeSummary(free);
+  const planAll=planEntriesForWeek(key);const manual=wk.entries||[];
+  const sick=sickEntries(key);const counted=manual.concat(planAll.filter(p=>!p.cancelled&&p.date<=today)).concat(sick);
+  const total=counted.reduce((s,e)=>s+e.minutes,0);const target=S.settings.weeklyTarget*60;
+  const perDay=[0,0,0,0,0,0,0];counted.forEach(e=>{perDay[(parseYmd(e.date).getDay()+6)%7]+=e.minutes});const maxDay=Math.max(60,...perDay);
+  const perCat={};manual.forEach(e=>{perCat[e.activity]=(perCat[e.activity]||0)+e.minutes});
+  const list=manual.concat(planAll).concat(sick).sort((a,b)=>(a.date+(a.start||"99"))<(b.date+(b.start||"99"))?-1:1);
+  const w=isoWeek(mon);const isCur=key===weekKeyOfDate(new Date());const diff=total-target;
+  let h="";
+  h+=`<div class="wk"><button class="nav" id="prev">‹</button><button class="title" id="cur">KW ${w.week}<small>${fmtDateShort(mon)} bis ${fmtDateShort(sun)}${isCur?"":" · zurück zu heute"}</small></button><button class="nav" id="next">›</button></div>
+  <div class="hero"><div class="num">${fmtMin(total)}<span>h</span></div>
+    <div class="sub"><span>${fs==="Ferien"?"Ferienwoche":(target?(diff>=0?"+":"−")+fmtMin(Math.abs(diff))+" h gegenüber Soll "+S.settings.weeklyTarget+" h":"")}</span><button class="pill ${fs?"on":""}" id="free">${fs||"Frei?"}</button></div></div>
+  <div class="prog"><div style="width:${target?Math.min(100,Math.round(total/target*100)):0}%"></div></div>
+  <div class="days">${perDay.map((m,i)=>{const isT=ymd(addDays(mon,i))===today;return `<div class="day"><div class="col ${m?"f":""} ${isT?"t":""}" style="height:${Math.max(3,Math.round(m/maxDay*62))}px"></div><small class="${free[i]&&i<5?"free":""}">${WD[i]}</small></div>`}).join("")}</div>`;
+  if(S.timer){const hrs=(Date.now()-new Date(S.timer.startedAt))/3600000;h+=`<div class="timer" style="${catVars(S.timer.activity)}"><div><div class="cat">${esc(S.timer.activity)}</div><div class="clock" id="clock">0:00:00</div>${hrs>6?'<div class="cat" style="margin-top:6px;opacity:1">Läuft seit über 6 Stunden. Vergessen zu stoppen?</div>':""}</div><button class="stop" id="stop">Stopp</button></div>`}
+  h+=`<div class="tiles">${CATS.map(c=>`<button class="tile ${S.timer&&S.timer.activity===c?"live":""}" data-cat="${esc(c)}" style="${catVars(c)}"><span class="n">${esc(c)}</span><span class="s">${perCat[c]?fmtMin(perCat[c])+" h":"–"}</span><span class="add" data-add="${esc(c)}" title="Manuell eintragen">+</span></button>`).join("")}</div>`;
+  const booked=list.filter(e=>!(e.plan&&e.date>today)),planned=list.filter(e=>e.plan&&e.date>today);
+  const rowHtml=e=>{const off=e.cancelled||(e.plan&&e.date>today);const tag=e.sick?"gutgeschrieben (Tagessoll)":e.plan?(e.cancelled?"entfallen":(e.date>today?"geplant":"Stundenplan")):(e.start?e.start+" bis "+e.end:"manuell");
+    return `<button class="row ${off?"off":""}" data-id="${e.id}"><span class="m" style="background:${e.plan?courseColor(e.courseId):catMark(e.activity)}"></span><span class="t"><b>${esc(e.plan?courseName(e.courseId):e.activity)}</b><small>${tag}</small></span><span class="d">${fmtMin(e.minutes)}</span></button>`};
+  const dayHead=e=>{const d=parseYmd(e.date);const i=(d.getDay()+6)%7;return `<div class="dh"><span>${WDL[i]}, ${fmtDateShort(d)}${free[i]?" · "+esc(free[i].label):""}</span><span>${fmtMin(perDay[i])} h</span></div>`};
+  h+=`<div class="lbl">Einträge</div><div class="list">`;if(!booked.length)h+=`<div class="empty">Noch nichts verbucht in dieser Woche.</div>`;
+  let cur=null;booked.forEach(e=>{if(e.date!==cur){cur=e.date;h+=dayHead(e)}h+=rowHtml(e)});
+  if(planned.length){const pm=planned.reduce((s,e)=>s+e.minutes,0);const openP=!!S.plannedOpen;
+    h+=`<button class="lbl toggle" id="tgl"><span>Noch geplant · ${planned.length} Std. · ${fmtMin(pm)} h</span><span class="chev ${openP?"up":""}">›</span></button><div class="${openP?"":"hidden"}">`;
+    cur=null;planned.forEach(e=>{if(e.date!==cur){cur=e.date;h+=dayHead(e)}h+=rowHtml(e)});h+=`</div>`}
+  h+=`</div>`;view.innerHTML=h;
+  $("prev").onclick=()=>{S.viewMonday=addDays(S.viewMonday,-7);render()};$("next").onclick=()=>{S.viewMonday=addDays(S.viewMonday,7);render()};$("cur").onclick=()=>{S.viewMonday=mondayOf(new Date());render()};
+  $("free").onclick=()=>openFree(key);const stop=$("stop");if(stop)stop.onclick=()=>stopTimer(null);const tg=$("tgl");if(tg)tg.onclick=()=>{S.plannedOpen=!S.plannedOpen;render()};
+  view.querySelectorAll(".tile").forEach(t=>t.onclick=ev=>{const add=ev.target.closest(".add");if(add){openManual(add.dataset.add,key);return}startTimer(t.dataset.cat)});
+  view.querySelectorAll(".row").forEach(r=>r.onclick=()=>{const id=r.dataset.id;if(id.startsWith("sick:")){openFree(key);return}if(id.startsWith("plan:")){const p=planAll.find(x=>x.id===id);if(p)openPlanInstance(key,p)}else{const e=manual.find(x=>x.id===id);if(e)openEdit(e)}});
+  if(S.timer){const upd=()=>{const c=$("clock");if(!c||!S.timer)return;const s=Math.max(0,Math.floor((Date.now()-new Date(S.timer.startedAt))/1000));c.textContent=Math.floor(s/3600)+":"+pad(Math.floor(s%3600/60))+":"+pad(s%60)};upd();if(!tick)tick=setInterval(upd,1000)}else if(tick){clearInterval(tick);tick=null}
+}
+
+function renderUeb(){
+  const mon=mondayOf(new Date());const k13=[];for(let i=13;i>=1;i--)k13.push(weekKeyOfDate(addDays(mon,-7*i)));const k52=[];for(let i=52;i>=1;i--)k52.push(weekKeyOfDate(addDays(mon,-7*i)));
+  const compute=()=>{let n=0,tot=0,u=0;const forgot=[];
+    let first=null;Object.values(S.weeks).forEach(w=>{if(w.entries&&w.entries.length&&(!first||w.key<first))first=w.key});
+    const cats={};const bars=[];
+    k13.forEach(k=>{const hol=isHolidayWeek(k);const fd=freeDays(k).slice(0,5).filter(Boolean).length;const part=!hol&&fd>0;const w=S.weeks[k];const has=(w&&w.entries&&w.entries.length)||sickEntries(k).length;const es=effectiveEntries(k);const t=es.reduce((s,e)=>s+e.minutes,0);bars.push({k,t,hol,part,has});if(hol||part||!has)return;n++;tot+=t;
+      es.forEach(e=>{if(TEACH.includes(e.activity))u+=e.minutes;else cats[e.activity]=(cats[e.activity]||0)+e.minutes})});
+    if(first)k52.forEach(k=>{if(k<first||isHolidayWeek(k))return;const w=S.weeks[k];if(!((w&&w.entries&&w.entries.length)||sickEntries(k).length))forgot.push(k)});
+    let year=null;if(first&&first<=k52[0]){let ytot=0;k52.forEach(k=>{ytot+=effectiveEntries(k).reduce((s,e)=>s+e.minutes,0)});year={perWeek:ytot/52}}
+    const yearFrom=first?addDays(mondayOfKey(first),52*7):null;
+    return {n,avg:n?tot/n:0,avgU:n?u/n:0,avgR:n?(tot-u)/n:0,forgot,year,yearFrom,cats,bars}};
+  const draw=(r,loading)=>{
+    const soll=S.settings.weeklyTarget*46/52;
+    let h=r.n?`<div class="ov"><div class="lbl">Durchschnitt pro Schulwoche</div><div class="num">${fmtMin(r.avg)}<span>h</span></div><div class="sub">${fmtDateShort(addDays(mon,-7*13))} bis ${fmtDateShort(addDays(mon,-1))} · ${r.n} volle Schulwochen. Ferien und Wochen mit freien Tagen nicht gezählt.</div>
+      ${(()=>{const mx=Math.max(60,...r.bars.map(x=>x.t))*1.12;const H=90;return `<div class="bars" style="height:${H+34}px">${r.bars.map(b=>`<div class="bar ${b.hol?"hol":""} ${b.part?"part":""} ${!b.hol&&!b.has?"miss":""}"><em>${b.hol&&!b.t?"":Math.round(b.t/60)}</em><div style="height:${Math.max(3,Math.round(b.t/mx*H))}px"></div><small>${Number(b.k.slice(6))}</small></div>`).join("")}</div><div class="legend"><span><i class="l1"></i>volle Schulwoche</span><span><i class="l2"></i>freie Tage</span><span><i class="l3"></i>Ferien</span><span><i class="l4"></i>ohne Einträge</span></div>`})()}
+      <div class="ov2"><div style="${catVars("Unterricht")}"><small>Unterricht</small><b>${fmtMin(r.avgU)}<span>h</span></b></div><button id="ovR" style="${catVars("Unterrichtsvorbereitung")}"><small>Vorbereitung etc. ›</small><b>${fmtMin(r.avgR)}<span>h</span></b></button></div>`
+      :`<div class="ov"><div class="empty">${loading?"lade…":"Noch keine abgeschlossene Schulwoche mit Einträgen in den letzten drei Monaten."}</div>`;
+    if(r.year)h+=`<div class="year"><div class="lbl">Jahresbilanz</div><div class="num">${fmtDec(r.year.perWeek)}<span>h pro Woche</span></div><div class="sub">Soll ${soll.toFixed(1).replace(".",",")} h, ausgehend von ${S.settings.weeklyTarget} h und 30 Urlaubstagen · letzte 52 Wochen inkl. Ferien</div></div>`;
+    else if(r.yearFrom)h+=`<div class="year"><div class="sub" style="margin:0">Jahresbilanz ab ${fmtDateShort(r.yearFrom)} ${r.yearFrom.getFullYear()}, sobald 52 Wochen vorliegen.</div></div>`;
+    if(r.forgot.length&&!loading)h+=`<div class="warn">Woche vergessen einzutragen?<small>Schulwochen ohne Einträge, antippen öffnet die Woche</small><div class="wkchips">${r.forgot.map(k=>`<button data-k="${k}">KW ${Number(k.slice(6))}/${k.slice(2,4)}</button>`).join("")}</div></div>`;
+    view.innerHTML=h+`</div>`;const ovR=$("ovR");if(ovR)ovR.onclick=()=>openBreakdown(r);view.querySelectorAll(".wkchips button").forEach(b=>b.onclick=()=>{S.viewMonday=mondayOfKey(b.dataset.k);S.tab="woche";render();window.scrollTo(0,0)})};
+  draw(compute(),!!S.db&&!S.ovLoaded);
+  if(S.db&&!S.ovLoaded){weeksInRange(k52[0],k52[k52.length-1]).then(()=>{S.ovLoaded=true;if(S.tab==="ueb")draw(compute(),false)})}
+}
+
+function openBreakdown(r){const rows=Object.entries(r.cats).sort((a,b)=>b[1]-a[1]);const tot=rows.reduce((s,x)=>s+x[1],0);
+  open(`<h2>Vorbereitung etc.</h2><div class="sub">Durchschnitt pro voller Schulwoche, ${r.n} Wochen</div><div class="bd">${rows.map(([c,m])=>`<div style="${catVars(c)}"><span class="t">${esc(c)}</span><span class="pct">${tot?Math.round(m/tot*100):0} %</span><b>${fmtMin(m/r.n)} h</b></div>`).join("")}</div><div class="acts"><button class="btn" id="c">Schließen</button></div>`);$("c").onclick=close}
+
+function renderPlan(){
+  const v=currentVersion();const r=v.raster;const items=v.items;const today=ymd(new Date());
+  const cellOf=(d,i)=>items.find(it=>it.day===d&&it.from===i+1);
+  let h="";
+  if(S.plan.versions.length>1||v.from){h+=`<div class="vers">${S.plan.versions.map(x=>`<button class="pill ${x.id===v.id?"on":""}" data-v="${x.id}">${x.from?(x.from>today?"ab ":"seit ")+fmtDate(x.from):"Grundplan"}</button>`).join("")}</div>`}
+  const paint=S.planPaint&&courseById(S.planPaint)?S.planPaint:null;S.planPaint=paint;
+  h+=`<div class="courses">${S.courses.map(c=>`<button class="chip ${paint===c.id?"on":""}" data-c="${c.id}"><i style="background:${c.color}"></i>${esc(c.name)}</button>`).join("")}<button class="chip x" id="newCourse">+ Kurs</button>${paint?`<button class="chip x" id="editCourse">✎ ${esc(courseName(paint))}</button>`:""}</div>
+  <p class="note" style="margin:0 0 10px">${paint?"Felder antippen, um „"+esc(courseName(paint))+"“ einzutragen oder zu löschen. Chip erneut antippen beendet den Modus.":"Kurs oben wählen, dann Felder antippen. Belegte Felder lassen sich ziehen."}</p>`;
+  h+=`<div class="grid"><div></div>${WD.slice(0,5).map(x=>`<div class="h">${x}</div>`).join("")}`;
+  r.forEach((t,i)=>{h+=`<div class="tm"><b>${i+1}.</b>${t[0]}</div>`;for(let d=0;d<5;d++){const it=cellOf(d,i);h+=it?`<button class="cell f" data-d="${d}" data-i="${i}" style="background:${courseColor(it.courseId)}">${esc(courseName(it.courseId))}</button>`:`<button class="cell" data-d="${d}" data-i="${i}"></button>`}});
+  const wm=items.reduce((s,it)=>{const t=itemTimes(it,r);return s+minutesBetween(t.start,t.end)},0);
+  h+=`</div><p class="note" style="margin:0 0 12px">${items.length} Std. · ${fmtMin(wm)} h pro Woche</p><div class="acts" style="margin:0"><button class="btn" id="times">Stundenzeiten</button><button class="btn" id="newVer">Neuer Plan</button></div>
+  <p class="note">Jede Stunde zählt automatisch als Unterricht. Zum Halbjahr „Neuer Plan“: alte Wochen behalten den alten Plan.</p>`;
+  view.innerHTML=h;
+  view.querySelectorAll(".vers .pill").forEach(b=>b.onclick=()=>{S.planSel=b.dataset.v;render()});
+  view.querySelectorAll(".chip[data-c]").forEach(c=>c.onclick=()=>{S.planPaint=S.planPaint===c.dataset.c?null:c.dataset.c;render()});
+  $("newCourse").onclick=()=>openCourse(null);const ec=$("editCourse");if(ec)ec.onclick=()=>openCourse(courseById(paint));
+  $("times").onclick=()=>openTimes(v);$("newVer").onclick=()=>openNewVersion(v);
+  /* Tippen und Ziehen */
+  let drag=null;
+  const tapCell=async(d,i)=>{const it=cellOf(d,i);if(!paint){openCell(v,d,i);return}
+    if(it&&it.courseId===paint)v.items=v.items.filter(x=>x.id!==it.id);else if(it)v.items=v.items.map(x=>x.id===it.id?Object.assign({},x,{courseId:paint}):x);else v.items=v.items.concat([{id:uid(),day:d,from:i+1,to:i+1,courseId:paint}]);
+    S.ovLoaded=false;render();await persistPlan()};
+  const moveCell=async(from,to)=>{const a=cellOf(from.d,from.i),b=cellOf(to.d,to.i);if(!a)return;
+    v.items=v.items.map(x=>x.id===a.id?Object.assign({},x,{day:to.d,from:to.i+1,to:to.i+1}):(b&&x.id===b.id?Object.assign({},x,{day:from.d,from:from.i+1,to:from.i+1}):x));S.ovLoaded=false;render();await persistPlan()};
+  view.querySelectorAll(".cell").forEach(c=>{const d=Number(c.dataset.d),i=Number(c.dataset.i);
+    c.onpointerdown=ev=>{drag={d,i,x:ev.clientX,y:ev.clientY,moved:false,filled:c.classList.contains("f")};if(drag.filled){try{c.setPointerCapture(ev.pointerId)}catch(e){}}};
+    c.onpointermove=ev=>{if(!drag||!drag.filled)return;if(!drag.moved&&Math.hypot(ev.clientX-drag.x,ev.clientY-drag.y)>8){drag.moved=true;c.classList.add("drag")}
+      if(drag.moved){view.querySelectorAll(".cell.over").forEach(x=>x.classList.remove("over"));const el=document.elementFromPoint(ev.clientX,ev.clientY);const tgt=el&&el.closest?el.closest(".cell"):null;if(tgt&&tgt!==c)tgt.classList.add("over")}};
+    c.onpointerup=ev=>{if(!drag)return;const dr=drag;drag=null;c.classList.remove("drag");view.querySelectorAll(".cell.over").forEach(x=>x.classList.remove("over"));
+      if(dr.moved){const el=document.elementFromPoint(ev.clientX,ev.clientY);const tgt=el&&el.closest?el.closest(".cell"):null;if(tgt&&tgt!==c)moveCell(dr,{d:Number(tgt.dataset.d),i:Number(tgt.dataset.i)});return}
+      tapCell(d,i)};
+    c.onpointercancel=()=>{drag=null;c.classList.remove("drag")};
+    c.onclick=ev=>ev.preventDefault()});
+}
+
+/* Sheets */
+const root=document.getElementById("sheetRoot");
+function open(inner){root.innerHTML=`<div class="sheet-bg" id="bg"><div class="sheet">${inner}</div></div>`;$("bg").onclick=e=>{if(e.target.id==="bg")close()}}
+function close(){root.innerHTML=""}
+function ask(text,okLabel,cb){open(`<h2>Sicher?</h2><div class="sub">${esc(text)}</div><div class="acts"><button class="btn" id="akC">Abbrechen</button><button class="btn dg" style="flex:1;background:var(--surface2)" id="akO">${esc(okLabel)}</button></div>`);$("akC").onclick=close;$("akO").onclick=()=>{close();cb()}}
+
+function openFree(key){
+  const mon=mondayOfKey(key),sun=addDays(mon,6);const ms=ymd(mon),ss=ymd(sun);
+  const nrw=NRW_FERIEN.filter(r=>r[0]<=ss&&r[1]>=ms).map(r=>({label:r[2]+" NRW",from:r[0],to:r[1]}));
+  const hol=[];for(let i=0;i<7;i++){const ds=ymd(addDays(mon,i));const n=holidays(Number(ds.slice(0,4)))[ds];if(n)hol.push({label:n,from:ds,to:ds})}
+  const own=(S.settings.free||[]).filter(r=>r.from<=ss&&r.to>=ms);
+  const w=S.weeks[key];const legacy=w&&w.planSkipped;
+  const row=(x,del)=>`<div><span>${esc(x.label)}${x.type==="sick"?' <span class="pill" style="padding:1px 8px">krank</span>':""}<small>${x.from===x.to?fmtDate(x.from):fmtDate(x.from)+" bis "+fmtDate(x.to)}</small></span>${del?`<button data-id="${x.id}">Entfernen</button>`:""}</div>`;
+  open(`<h2>Frei oder krank</h2><div class="sub">Ferien und Feiertage NRW sind bis 2030 hinterlegt. Hier zusätzliche Tage eintragen. Krankheitstage werden mit dem Tagessoll (${fmtMin(sickMinutes())} h) gutgeschrieben.</div>
+    ${nrw.length||hol.length||own.length||legacy?`<div class="frees">${nrw.map(x=>row(x,false)).join("")}${hol.map(x=>row(x,false)).join("")}${own.map(x=>row(x,true)).join("")}${legacy?'<div><span>Ferien (manuell markiert)<small>ganze Woche</small></span><button data-legacy="1">Entfernen</button></div>':""}</div>`:""}
+    <div class="two"><div class="field"><label>Frei von</label><input type="date" id="fFrom" value="${ms}"></div><div class="field"><label>bis</label><input type="date" id="fTo" value="${ymd(addDays(mon,4))}"></div></div>
+    <div class="field"><label>Art</label><div class="chips" id="fType" style="margin-bottom:0"><button data-t="free" class="on">Frei / Ferien</button><button data-t="sick">Krank</button></div></div>
+    <div class="field"><label>Bezeichnung (optional)</label><input type="text" id="fLabel" placeholder="z.B. beweglicher Ferientag"></div>
+    <div class="acts"><button class="btn" id="c">Schließen</button><button class="btn p" id="s">Eintragen</button></div>`);
+  let ftype="free";$("fType").querySelectorAll("button").forEach(b=>b.onclick=()=>{ftype=b.dataset.t;$("fType").querySelectorAll("button").forEach(x=>x.classList.toggle("on",x===b))});
+  $("c").onclick=close;
+  root.querEach=null;root.querySelectorAll(".frees button[data-id]").forEach(b=>b.onclick=async()=>{S.settings.free=S.settings.free.filter(r=>r.id!==b.dataset.id);S.ovLoaded=false;await persistSettings();close();render()});
+  const lg=root.querySelector("button[data-legacy]");if(lg)lg.onclick=async()=>{const x=await ensureWeek(key);x.planSkipped=false;await persistWeek(key);close();render()};
+  $("s").onclick=async()=>{const f=$("fFrom").value,t=$("fTo").value;if(!f||!t||t<f){toast("Zeitraum prüfen");return}S.settings.free=(S.settings.free||[]).concat([{id:uid(),from:f,to:t,label:$("fLabel").value.trim(),type:ftype}]);S.ovLoaded=false;await persistSettings();close();render()};
+}
+function openManual(cat,key){
+  const mon=mondayOfKey(key),today=new Date();const def=weekKeyOfDate(today)===key?ymd(today):ymd(mon<today?addDays(mon,4):mon);const opts=[15,30,45,60,90,120,180,240,300,360,420,480];let sel=60;
+  open(`<h2>${esc(cat)}</h2><div class="sub">Dauer wählen, fertig.</div><div class="chips" id="dur">${opts.map(m=>`<button data-m="${m}" class="${m===sel?"on":""}">${fmtMin(m)}</button>`).join("")}</div>
+    <div class="two"><div class="field"><label>oder Stunden</label><input type="text" inputmode="decimal" id="mMin" placeholder="z.B. 1,5"></div><div class="field"><label>Datum</label><input type="date" id="mDate" value="${def}"></div></div>
+    <div class="acts"><button class="btn" id="c">Abbrechen</button><button class="btn p" id="s">Speichern</button></div>`);
+  $("dur").querySelectorAll("button").forEach(b=>b.onclick=()=>{sel=Number(b.dataset.m);$("mMin").value="";$("dur").querySelectorAll("button").forEach(x=>x.classList.toggle("on",x===b))});
+  $("mMin").oninput=()=>{$("dur").querySelectorAll("button").forEach(x=>x.classList.remove("on"))};$("c").onclick=close;
+  $("s").onclick=async()=>{const m=parseHours($("mMin").value)||sel;const d=$("mDate").value;if(!d||m<1){toast("Datum und Dauer prüfen");return}close();const e={id:uid(),date:d,start:"",end:"",minutes:m,courseId:"",activity:cat};await addEntry(e);undoToast(cat+": "+fmtMin(m)+" h",e)}}
+function openEdit(e){
+  open(`<h2>${esc(e.activity)}</h2><div class="sub">${e.start?e.start+" bis "+e.end:"manuell eingetragen"}</div>
+    <div class="two"><div class="field"><label>Stunden</label><input type="text" inputmode="decimal" id="eMin" value="${fmtMin(e.minutes)}"></div><div class="field"><label>Datum</label><input type="date" id="eDate" value="${e.date}"></div></div>
+    <div class="field"><label>Kategorie</label><div class="chips" id="eCat">${CATS.concat(CATS.includes(e.activity)?[]:[e.activity]).map(c=>`<button data-c="${esc(c)}" class="${c===e.activity?"on":""}">${esc(c)}</button>`).join("")}</div></div>
+    <div class="acts"><button class="btn dg" id="del">Löschen</button><button class="btn" id="c">Abbrechen</button><button class="btn p" id="s">Speichern</button></div>`);
+  let cat=e.activity;$("eCat").querySelectorAll("button").forEach(b=>b.onclick=()=>{cat=b.dataset.c;$("eCat").querySelectorAll("button").forEach(x=>x.classList.toggle("on",x===b))});
+  $("c").onclick=close;$("del").onclick=async()=>{close();await deleteEntry(e.date,e.id);toast("Gelöscht")};
+  $("s").onclick=async()=>{const m=parseHours($("eMin").value),d=$("eDate").value;if(!d||m<1){toast("Datum und Dauer prüfen");return}close();await updateEntry(e.date,Object.assign({},e,{minutes:m,date:d,activity:cat,start:m===e.minutes?e.start:"",end:m===e.minutes?e.end:""}))}}
+function openPlanInstance(key,p){
+  open(`<h2>${esc(courseName(p.courseId))}</h2><div class="sub">${WDL[(parseYmd(p.date).getDay()+6)%7]}, ${fmtDateShort(parseYmd(p.date))} · ${p.start} bis ${p.end} · ${fmtMin(p.minutes)} h</div>
+    <p class="note" style="margin:0 0 6px">${p.cancelled?"Als entfallen markiert, zählt in dieser Woche nicht.":"Nur diese Stunde in dieser Woche, der Stundenplan bleibt. Ganze freie Tage besser über „Frei?“."}</p>
+    <div class="acts"><button class="btn" id="c">Schließen</button><button class="btn ${p.cancelled?"p":""}" id="t" ${p.cancelled?"":'style="color:var(--danger)"'}>${p.cancelled?"Wieder zählen":"Entfällt"}</button></div>`);
+  $("c").onclick=close;$("t").onclick=async()=>{const w=await ensureWeek(key);const c=(w.cancelled||[]).slice();w.cancelled=c.includes(p.planId)?c.filter(x=>x!==p.planId):c.concat([p.planId]);close();await persistWeek(key);render()}}
+function openCell(v,d,i){
+  const r=v.raster;const it=v.items.find(x=>x.day===d&&x.from===i+1);
+  open(`<h2>${WDL[d]}, ${i+1}. Stunde</h2><div class="sub">${r[i][0]} bis ${r[i][1]}${v.from?" · Plan "+(v.from>ymd(new Date())?"ab ":"seit ")+fmtDate(v.from):""}</div>
+    <div class="chips" id="cs">${S.courses.map(c=>`<button data-c="${c.id}" class="${it&&it.courseId===c.id?"on":""}"><i style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${c.color};margin-right:6px"></i>${esc(c.name)}</button>`).join("")}</div>
+    <div class="field"><label>Neuer Kurs</label><input type="text" id="nc" placeholder="z.B. F Q1"></div>
+    <div class="acts">${it?'<button class="btn dg" id="clr">Leeren</button>':""}<button class="btn" id="c">Abbrechen</button><button class="btn p" id="s">Eintragen</button></div>`);
+  let sel=it?it.courseId:null;
+  $("cs").querySelectorAll("button").forEach(b=>b.onclick=()=>{sel=b.dataset.c;$("nc").value="";$("cs").querySelectorAll("button").forEach(x=>x.classList.toggle("on",x===b))});
+  $("c").onclick=close;const clr=$("clr");if(clr)clr.onclick=async()=>{v.items=v.items.filter(x=>x.id!==it.id);close();await persistPlan();render()};
+  $("s").onclick=async()=>{let cid=sel;const nn=$("nc").value.trim();if(nn){const c={id:uid(),name:nn,color:PALETTE[S.courses.length%PALETTE.length]};S.courses=S.courses.concat([c]);cid=c.id;await persistCourses()}
+    if(!cid){toast("Kurs wählen oder anlegen");return}
+    if(it)v.items=v.items.map(x=>x.id===it.id?Object.assign({},x,{courseId:cid}):x);else v.items=v.items.concat([{id:uid(),day:d,from:i+1,to:i+1,courseId:cid}]);
+    close();await persistPlan();render()}}
+function openNewVersion(v){
+  const def=ymd(addDays(mondayOf(new Date()),7));const canDel=S.plan.versions.length>1&&v.from;
+  open(`<h2>Neuer Stundenplan</h2><div class="sub">Der aktuelle Plan wird kopiert und gilt ab dem gewählten Datum als neue Version. Wochen davor rechnen weiter mit dem alten Plan.</div>
+    <div class="field"><label>Gilt ab</label><input type="date" id="vFrom" value="${def}"></div>
+    <div class="acts">${canDel?'<button class="btn dg" id="vDel">Diese Version löschen</button>':""}<button class="btn" id="c">Abbrechen</button><button class="btn p" id="s">Anlegen</button></div>`);
+  $("c").onclick=close;
+  const del=$("vDel");if(del)del.onclick=()=>ask("Diese Planversion löschen? Ihr Zeitraum fällt auf die vorige Version zurück.","Löschen",async()=>{S.plan.versions=S.plan.versions.filter(x=>x.id!==v.id);S.planSel=null;S.ovLoaded=false;await persistPlan();render()});
+  $("s").onclick=async()=>{const f=$("vFrom").value;if(!f){toast("Datum fehlt");return}if(S.plan.versions.some(x=>x.from===f)){toast("Für dieses Datum gibt es schon einen Plan");return}
+    const nv={id:uid(),from:f,items:v.items.map(x=>Object.assign({},x,{id:uid()})),raster:v.raster.map(x=>x.slice())};S.plan.versions=S.plan.versions.concat([nv]).sort((a,b)=>(a.from||"")<(b.from||"")?-1:1);S.planSel=nv.id;S.ovLoaded=false;close();await persistPlan();render()}}
+function openCourse(c){
+  open(`<h2>${c?"Kurs":"Neuer Kurs"}</h2><div class="field"><label>Name</label><input type="text" id="cn" value="${esc(c?c.name:"")}" placeholder="z.B. Ge 8f"></div>
+    <div class="field"><label>Farbe</label><div class="chips" id="pal">${PALETTE.map(p=>`<button data-p="${p}" style="background:${p};border-color:${p};min-width:40px;height:40px;padding:0;${c&&c.color===p?"outline:3px solid var(--ink);outline-offset:2px":""}"></button>`).join("")}</div></div>
+    <div class="acts">${c?'<button class="btn dg" id="del">Löschen</button>':""}<button class="btn" id="cc">Abbrechen</button><button class="btn p" id="cs">Speichern</button></div>`);
+  let col=c?c.color:PALETTE[S.courses.length%PALETTE.length];
+  $("pal").querySelectorAll("button").forEach(b=>b.onclick=()=>{col=b.dataset.p;$("pal").querySelectorAll("button").forEach(x=>x.style.outline=x===b?"3px solid var(--ink)":"none")});
+  $("cc").onclick=close;
+  const del=$("del");if(del)del.onclick=()=>ask("Kurs löschen? Seine Stunden verschwinden aus allen Planversionen, alte Wochen behalten die Zeiten unter „Unterricht“.","Löschen",async()=>{S.courses=S.courses.filter(x=>x.id!==c.id);S.plan.versions.forEach(v=>{v.items=v.items.filter(x=>x.courseId!==c.id)});await persistCourses();await persistPlan();render()});
+  $("cs").onclick=async()=>{const n=$("cn").value.trim();if(!n){toast("Name fehlt");return}if(c)S.courses=S.courses.map(x=>x.id===c.id?Object.assign({},x,{name:n,color:col}):x);else S.courses=S.courses.concat([{id:uid(),name:n,color:col}]);close();await persistCourses();render()}}
+function openTimes(v){
+  const r=v.raster;
+  open(`<h2>Stundenzeiten</h2><div class="sub">Beginn und Ende je Schulstunde${v.from?", Plan "+fmtDate(v.from):""}.</div><table class="tt" id="tt">${r.map((t,i)=>`<tr><td>${i+1}.</td><td><input type="time" class="a" value="${t[0]}"></td><td><input type="time" class="b" value="${t[1]}"></td></tr>`).join("")}</table>
+    <button class="link" id="more">+ Stunde</button><div class="acts"><button class="btn" id="c">Abbrechen</button><button class="btn p" id="s">Speichern</button></div>`);
+  $("more").onclick=()=>{const tr=document.createElement("tr");const n=$("tt").rows.length+1;tr.innerHTML=`<td>${n}.</td><td><input type="time" class="a"></td><td><input type="time" class="b"></td></tr>`;$("tt").appendChild(tr)};
+  $("c").onclick=close;
+  $("s").onclick=async()=>{const a=[...$("tt").querySelectorAll(".a")],b=[...$("tt").querySelectorAll(".b")];const nr=a.map((x,i)=>[x.value,b[i].value]).filter(x=>x[0]&&x[1]);if(!nr.length){toast("Mindestens eine Stunde");return}v.raster=nr;v.items=v.items.filter(it=>!it.from||it.from<=nr.length);close();await persistPlan();render()}}
+function openSettings(){
+  const to=ymd(new Date()),from=ymd(addDays(mondayOf(new Date()),-7*8));
+  open(`<h2>Einstellungen</h2>
+    <div class="field"><label>Wochen-Soll in Stunden</label><input type="number" id="tg" step="0.5" min="0" value="${S.settings.weeklyTarget}"></div>
+    <div class="field"><label>Export als CSV</label><div class="two"><input type="date" id="xf" value="${from}"><input type="date" id="xt" value="${to}"></div></div>
+    <div class="acts"><button class="btn" id="csv">CSV</button><button class="btn" id="json">Backup sichern</button><button class="btn" id="imp">Backup einspielen</button></div><input type="file" id="impFile" accept=".json,application/json" style="display:none"><div id="xo"></div>
+    <p class="note">${S.user?"Angemeldet als "+esc(S.user.email)+". Änderungen werden auf allen angemeldeten Geräten synchronisiert, offline zwischengespeichert.":"Nicht angemeldet, Daten liegen nur auf diesem Gerät."}</p>
+    <p class="note">Als App installieren: Android Chrome Menü „Zum Startbildschirm hinzufügen“, iPad Safari Teilen „Zum Home-Bildschirm“, Windows Chrome/Edge Adressleiste „App installieren“.</p>
+    <div class="acts">${S.user?'<button class="btn dg" id="lo">Abmelden</button>':""}<button class="btn" id="c">Schließen</button><button class="btn p" id="s">Speichern</button></div>`);
+  const lo=$("lo");if(lo)lo.onclick=()=>ask("Abmelden? Die Daten bleiben im Konto und erscheinen nach erneuter Anmeldung.","Abmelden",()=>{close();logout()});
+  $("c").onclick=close;$("s").onclick=async()=>{const t=Number($("tg").value);if(isNaN(t)||t<0){toast("Zahl prüfen");return}S.settings.weeklyTarget=t;close();await persistSettings();render()};
+  $("csv").onclick=()=>exportCsv($("xf").value,$("xt").value);$("json").onclick=exportJson;
+  $("imp").onclick=()=>$("impFile").click();$("impFile").onchange=ev=>{const f=ev.target.files[0];if(!f)return;const rd=new FileReader();rd.onload=()=>{let o;try{o=JSON.parse(rd.result)}catch(e){toast("Datei nicht lesbar");return}
+    const nW=Array.isArray(o.weeks)?o.weeks.length:0;ask(`Backup vom ${o.exportiert?new Date(o.exportiert).toLocaleDateString("de-DE"):"?"} einspielen? ${nW} Wochen, ${(o.courses||[]).length} Kurse. Gleiche Wochen werden überschrieben.`,"Einspielen",()=>importBackup(o))};rd.readAsText(f)}}
+async function importBackup(o){if(Array.isArray(o.courses)){S.courses=o.courses;await persistCourses()}if(o.settings){S.settings=normSettings(o.settings);await persistSettings()}if(o.stundenplan||o.plan){S.plan=normPlan(o.stundenplan||o.plan);await persistPlan()}
+  if(Array.isArray(o.weeks)){for(const w of o.weeks){if(!w||!w.key)continue;S.weeks[w.key]=weekFromDoc(w.key,w);await persistWeek(w.key)}}S.ovLoaded=false;render();toast("Backup eingespielt")}
+
+
+
+/* Export */
+async function deliver(name,data){try{const blob=new Blob([data],{type:name.endsWith(".csv")?"text/csv;charset=utf-8":"application/json"});const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(url);a.remove()},2000);toast("Datei gespeichert")}catch(e){const o=$("xo");if(o)o.innerHTML=`<div class="field"><label>Download nicht möglich, Inhalt kopieren:</label><textarea rows="6" readonly>${esc(data)}</textarea></div>`}}
+async function exportCsv(from,to){if(!from||!to){toast("Zeitraum angeben");return}
+  const weeks=await weeksInRange(weekKeyOf(from),weekKeyOf(to));const keys=new Set(Object.keys(weeks));let m=mondayOf(parseYmd(from));const end=parseYmd(to);while(m<=end){keys.add(weekKeyOfDate(m));m=addDays(m,7)}
+  const rows=[];keys.forEach(k=>{effectiveEntries(k).forEach(e=>{if(e.date>=from&&e.date<=to)rows.push(e)})});rows.sort((a,b)=>(a.date+(a.start||"99"))<(b.date+(b.start||"99"))?-1:1);
+  const q=s=>'"'+String(s==null?"":s).replace(/"/g,'""')+'"';const lines=["Datum;Wochentag;KW;Kategorie;Kurs;Von;Bis;Minuten;Stunden;Quelle"];
+  rows.forEach(e=>{const d=parseYmd(e.date);lines.push([e.date,WD[(d.getDay()+6)%7],isoWeek(d).week,q(e.activity),q(e.plan?courseName(e.courseId):""),e.start||"",e.end||"",e.minutes,(e.minutes/60).toFixed(2).replace(".",","),e.plan?"Stundenplan":"manuell"].join(";"))});
+  await deliver("lehrerzeit_"+from+"_"+to+".csv","\ufeff"+lines.join("\r\n"))}
+async function exportJson(){const weeks=await weeksInRange("0000-W00","9999-W99");await deliver("lehrerzeit_backup_"+ymd(new Date())+".json",JSON.stringify({exportiert:new Date().toISOString(),courses:S.courses,settings:S.settings,stundenplan:S.plan,weeks:Object.values(weeks)},null,1))}
+
+let toastT=null;function toast(m,label,fn,ms){const t=$("toast");t.innerHTML=`<span>${esc(m)}</span>`+(label?`<button id="toastBtn">${esc(label)}</button>`:"");t.classList.toggle("act",!!label);t.classList.add("show");clearTimeout(toastT);if(label)$("toastBtn").onclick=()=>{t.classList.remove("show");fn()};toastT=setTimeout(()=>t.classList.remove("show"),ms||2200)}
+authBind();init();
+document.addEventListener("visibilitychange",()=>{if(!document.hidden&&S.tab==="woche")render()});
+})();
+</script>
+</body>
+</html>

@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-ZjCGzapQsUk6aa3pOIN3YpmIJD5DPmbAtbTVidRWJY0=' https://www.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https://*.googleapis.com https://*.firebaseio.com wss://*.firebaseio.com https://*.firebaseapp.com https://www.gstatic.com; manifest-src 'self'; worker-src 'self'; base-uri 'none'; object-src 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-CxPA00wW6gjbGlg510cyJQtaaUT4GjrUng1B2lmYGmw=' https://www.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https://*.googleapis.com https://*.firebaseio.com wss://*.firebaseio.com https://*.firebaseapp.com https://www.gstatic.com; manifest-src 'self'; worker-src 'self'; base-uri 'none'; object-src 'none'; form-action 'none'">
 <meta name="referrer" content="no-referrer">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#F7F7F5">
@@ -240,7 +240,7 @@ textarea{width:100%;border:1px solid var(--line);background:var(--surface2);bord
       <div class="err hidden" id="aErr"></div>
       <div class="acts"><button class="btn" id="aReg">Registrieren</button><button class="btn p" id="aLogin">Anmelden</button></div>
       <button class="link" id="aReset" style="margin-top:8px">Passwort vergessen</button>
-      <p class="note" style="margin-top:30px">Version 15</p>
+      <p class="note" style="margin-top:30px">Version 17</p>
     </div>
     <div id="authCfg" class="hidden err">Firebase-Konfiguration fehlt. In index.html den Block FIREBASE_CONFIG ausfüllen (siehe Anleitung, Schritt 5).</div>
   </div>
@@ -337,7 +337,9 @@ function normPlan(p){let vs=[];if(p&&Array.isArray(p.versions))vs=p.versions.fil
   else if(p&&Array.isArray(p.items))vs=[{id:"v0",from:null,items:normItems(p.items),raster:normRaster(p.raster)}];
   if(!vs.length)vs=[{id:"v0",from:null,items:[],raster:normRaster(null)}];
   vs.sort((a,b)=>(a.from||"")<(b.from||"")?-1:1);return {versions:vs}}
-function normRaster(r){const v=Array.isArray(r)?r.filter(x=>Array.isArray(x)&&isHM(x[0])&&isHM(x[1])).map(x=>[x[0],x[1]]):[];return v.length?v:DEFAULT_RASTER.map(x=>x.slice())}
+function normRaster(r){const v=[];if(Array.isArray(r))r.forEach(x=>{if(typeof x==="string"){const a=x.split("-");if(isHM(a[0])&&isHM(a[1]))v.push([a[0],a[1]])}else if(Array.isArray(x)&&isHM(x[0])&&isHM(x[1]))v.push([x[0],x[1]])});return v.length?v:DEFAULT_RASTER.map(x=>x.slice())}
+function rasterOut(r){return r.map(x=>x[0]+"-"+x[1])}
+function planOut(){return {versions:S.plan.versions.map(v=>({id:v.id,from:v.from,items:v.items,raster:rasterOut(v.raster)}))}}
 function versionFor(ds){let v=null;for(const x of S.plan.versions){if(!x.from||x.from<=ds)v=x;else break}return v}
 function currentVersion(){if(S.planSel){const v=S.plan.versions.find(x=>x.id===S.planSel);if(v)return v}return versionFor(ymd(new Date()))||S.plan.versions[0]}
 function itemTimes(it,r){const f=it.from?r[it.from-1]:null,t=it.to?r[it.to-1]:(f||null);return {start:f?f[0]:it.start,end:t?t[1]:it.end}}
@@ -350,7 +352,7 @@ function effectiveEntries(key){const t=ymd(new Date());return ((S.weeks[key]&&S.
 
 /* Persistenz */
 const chain={};
-function chained(k,fn){const p=(chain[k]||Promise.resolve()).then(fn,fn).catch(e=>{console.error(e);toast("Speichern fehlgeschlagen")});chain[k]=p;return p}
+function chained(k,fn){const p=(chain[k]||Promise.resolve()).then(fn,fn).catch(e=>{console.error(k,e);toast("Speichern fehlgeschlagen ("+k+"): "+((e&&(e.code||e.message))||"unbekannt"),null,null,6000);throw e});chain[k]=p.catch(()=>{});return p}
 function weekFromDoc(key,d){return {key,entries:(d&&Array.isArray(d.entries)?d.entries:[]).map(normEntry).filter(Boolean),planSkipped:!!(d&&d.planSkipped),cancelled:(d&&Array.isArray(d.cancelled)?d.cancelled:[]).map(String)}}
 function normSettings(d){const labels={};if(d&&d.catLabels&&typeof d.catLabels==="object")Object.keys(d.catLabels).forEach(k=>{if(CATS.includes(k)&&d.catLabels[k])labels[k]=String(d.catLabels[k]).slice(0,40)});
   return {weeklyTarget:Number(d&&d.weeklyTarget)||41,free:Array.isArray(d&&d.free)?d.free.filter(r=>r&&isYMD(r.from)&&isYMD(r.to)).map(r=>({id:String(r.id||uid()),from:r.from,to:r.to,label:String(r.label||"").slice(0,60),type:r.type==="sick"?"sick":"free"})):[],catOrder:Array.isArray(d&&d.catOrder)?d.catOrder.filter(c=>CATS.includes(c)):[],catLabels:labels}}
@@ -359,7 +361,7 @@ function loadLocal(){try{const o=JSON.parse(localStorage.getItem(LS_KEY)||"null"
 function persistCourses(){if(S.db)return chained("courses",()=>S.db.doc("meta/courses").set({items:S.courses}));saveLocal();return Promise.resolve()}
 function persistSettings(){if(S.db)return chained("settings",()=>S.db.doc("meta/settings").set(S.settings));saveLocal();return Promise.resolve()}
 function persistTimer(){if(S.db)return chained("timer",()=>S.db.doc("meta/timer").set(S.timer||{}));saveLocal();return Promise.resolve()}
-function persistPlan(){if(S.db)return chained("plan",()=>S.db.doc("meta/stundenplan").set({versions:S.plan.versions}));saveLocal();return Promise.resolve()}
+function persistPlan(){if(S.db)return chained("plan",()=>S.db.doc("meta/stundenplan").set(planOut()));saveLocal();return Promise.resolve()}
 function persistWeek(key){const w=S.weeks[key];if(!w)return Promise.resolve();if(S.db)return chained("w:"+key,()=>S.db.doc("weeks/"+key).set({key,entries:w.entries,planSkipped:!!w.planSkipped,cancelled:w.cancelled||[]}));saveLocal();return Promise.resolve()}
 async function ensureWeek(key){if(S.weeks[key])return S.weeks[key];if(S.db){try{const s=await S.db.doc("weeks/"+key).get();if(s.exists){S.weeks[key]=weekFromDoc(key,s.data());return S.weeks[key]}}catch(e){console.error(e)}}S.weeks[key]=weekFromDoc(key,null);return S.weeks[key]}
 function subscribeWeek(key){if(!S.db||S.subscribedWeek===key)return;if(S.weekUnsub){S.weekUnsub();S.weekUnsub=null}S.subscribedWeek=key;
@@ -471,7 +473,7 @@ function renderWoche(){
   $("free").onclick=()=>openFree(key);view.querySelectorAll(".day").forEach(b=>b.onclick=()=>{const i=Number(b.dataset.day);S.dayFilter=df===i?null:i;render()});const da=$("dayAll");if(da)da.onclick=()=>{S.dayFilter=null;render()};const stop=$("stop");if(stop)stop.onclick=()=>stopTimer(null);const tg=$("tgl");if(tg)tg.onclick=()=>{S.plannedOpen=!S.plannedOpen;render()};
   let tdrag=null;
   view.querySelectorAll(".tile").forEach(t=>{
-    t.onclick=ev=>{if(tdrag&&tdrag.moved){ev.preventDefault();return}const add=ev.target.closest(".add")||(tdrag&&tdrag.onAdd?t.querySelector(".add"):null);if(add){tdrag=null;openManual(add.dataset.add,key);return}if(ev.target.closest(".grip")||(tdrag&&tdrag.onGrip)){tdrag=null;return}tdrag=null;startTimer(t.dataset.cat)};
+    t.onclick=ev=>{if(tdrag&&tdrag.moved){ev.preventDefault();return}const add=ev.target.closest(".add")||(tdrag&&tdrag.onAdd?t.querySelector(".add"):null);if(add){tdrag=null;openManual(add.dataset.add,key,df);return}if(ev.target.closest(".grip")||(tdrag&&tdrag.onGrip)){tdrag=null;return}tdrag=null;startTimer(t.dataset.cat)};
     t.onpointerdown=ev=>{const fromGrip=!!ev.target.closest(".grip"),onAdd=!!ev.target.closest(".add");if(!fromGrip&&ev.pointerType!=="mouse")return;tdrag={cat:t.dataset.cat,x:ev.clientX,y:ev.clientY,moved:false,onGrip:fromGrip,onAdd,pid:ev.pointerId}};
     t.onpointermove=ev=>{if(!tdrag||tdrag.cat!==t.dataset.cat)return;if(!tdrag.moved&&Math.hypot(ev.clientX-tdrag.x,ev.clientY-tdrag.y)>8){tdrag.moved=true;t.classList.add("drag");try{t.setPointerCapture(tdrag.pid)}catch(e){}}
       if(tdrag.moved){view.querySelectorAll(".tile.over").forEach(x=>x.classList.remove("over"));const el=document.elementFromPoint(ev.clientX,ev.clientY);const tg=el&&el.closest?el.closest(".tile"):null;if(tg&&tg!==t)tg.classList.add("over")}};
@@ -575,9 +577,9 @@ function openFree(key){
   const lg=root.querySelector("button[data-legacy]");if(lg)lg.onclick=async()=>{const x=await ensureWeek(key);x.planSkipped=false;await persistWeek(key);close();render()};
   $("s").onclick=async()=>{const f=$("fFrom").value,t=$("fTo").value;if(!f||!t||t<f){toast("Zeitraum prüfen");return}S.settings.free=(S.settings.free||[]).concat([{id:uid(),from:f,to:t,label:$("fLabel").value.trim(),type:ftype}]);S.ovLoaded=false;await persistSettings();close();render()};
 }
-function openManual(cat,key){
-  const mon=mondayOfKey(key),today=new Date();const def=weekKeyOfDate(today)===key?ymd(today):ymd(mon<today?addDays(mon,4):mon);const opts=[15,30,45,60,90,120,180,240,300,360,420,480];let sel=60;
-  open(`<div class="field" style="margin-top:0"><label>Kategorie, Name änderbar</label><input type="text" id="mName" value="${esc(catLabel(cat))}"></div><div class="sub">Dauer wählen, fertig.</div><div class="chips" id="dur">${opts.map(m=>`<button data-m="${m}" class="${m===sel?"on":""}">${fmtMin(m)}</button>`).join("")}</div>
+function openManual(cat,key,day){
+  const mon=mondayOfKey(key),today=new Date();const def=day!=null?ymd(addDays(mon,day)):(weekKeyOfDate(today)===key?ymd(today):ymd(mon<today?addDays(mon,4):mon));const opts=[15,30,45,60,90,120,180,240,300,360,420,480];let sel=60;
+  open(`<div class="field" style="margin-top:0"><label>Kategorie, Name änderbar</label><input type="text" id="mName" value="${esc(catLabel(cat))}"></div><div class="sub">${day!=null?WDL[day]+", "+fmtDateShort(parseYmd(def))+" · ":""}Dauer wählen, fertig.</div><div class="chips" id="dur">${opts.map(m=>`<button data-m="${m}" class="${m===sel?"on":""}">${fmtMin(m)}</button>`).join("")}</div>
     <div class="two"><div class="field"><label>oder Stunden</label><input type="text" inputmode="decimal" id="mMin" placeholder="z.B. 1,5"></div><div class="field"><label>Datum</label><input type="date" id="mDate" value="${def}"></div></div>
     <div class="acts"><button class="btn hidden" id="mOnly">Nur Name speichern</button><button class="btn" id="c">Abbrechen</button><button class="btn p" id="s">Speichern</button></div>`);
   const saveName=async()=>{const n=$("mName").value.trim();if(!n||n===catLabel(cat))return false;S.settings.catLabels=Object.assign({},S.settings.catLabels||{},{[cat]:n});if(n===cat)delete S.settings.catLabels[cat];await persistSettings();return true};
@@ -649,7 +651,7 @@ function openSettings(){
     <div class="field"><label>Export als CSV</label><div class="two"><input type="date" id="xf" value="${from}"><input type="date" id="xt" value="${to}"></div></div>
     <div class="acts"><button class="btn" id="csv">CSV</button><button class="btn" id="json">Backup sichern</button><button class="btn" id="imp">Backup einspielen</button></div><input type="file" id="impFile" accept=".json,application/json" style="display:none"><div id="xo"></div>
     <p class="note">${S.user?"Angemeldet als "+esc(S.user.email)+". Änderungen werden auf allen angemeldeten Geräten synchronisiert, offline zwischengespeichert.":"Nicht angemeldet, Daten liegen nur auf diesem Gerät."}</p>
-    <p class="note">Version 15. Als App installieren: Android Chrome Menü „Zum Startbildschirm hinzufügen“, iPad Safari Teilen „Zum Home-Bildschirm“, Windows Chrome/Edge Adressleiste „App installieren“.</p>
+    <p class="note">Version 17. Als App installieren: Android Chrome Menü „Zum Startbildschirm hinzufügen“, iPad Safari Teilen „Zum Home-Bildschirm“, Windows Chrome/Edge Adressleiste „App installieren“.</p>
     <div class="acts">${S.user?'<button class="btn dg" id="lo">Abmelden</button>':""}<button class="btn" id="c">Schließen</button><button class="btn p" id="s">Speichern</button></div>`);
   const lo=$("lo");if(lo)lo.onclick=()=>ask("Abmelden? Die Daten bleiben im Konto und erscheinen nach erneuter Anmeldung.","Abmelden",()=>{close();logout()});
   $("thm").querySelectorAll("button").forEach(b=>b.onclick=()=>{applyTheme(b.dataset.t);$("thm").querySelectorAll("button").forEach(x=>x.classList.toggle("on",x===b));render()});
@@ -657,8 +659,18 @@ function openSettings(){
   $("csv").onclick=()=>exportCsv($("xf").value,$("xt").value);$("json").onclick=exportJson;
   $("imp").onclick=()=>$("impFile").click();$("impFile").onchange=ev=>{const f=ev.target.files[0];if(!f)return;const rd=new FileReader();rd.onload=()=>{let o;try{o=JSON.parse(rd.result)}catch(e){toast("Datei nicht lesbar");return}
     const nW=Array.isArray(o.weeks)?o.weeks.length:0;ask(`Backup vom ${o.exportiert?new Date(o.exportiert).toLocaleDateString("de-DE"):"?"} einspielen? ${nW} Wochen, ${(o.courses||[]).length} Kurse. Gleiche Wochen werden überschrieben.`,"Einspielen",()=>importBackup(o))};rd.readAsText(f)}}
-async function importBackup(o){if(Array.isArray(o.courses)){S.courses=normCourses(o.courses);await persistCourses()}if(o.settings){S.settings=normSettings(o.settings);await persistSettings()}if(o.stundenplan||o.plan){S.plan=normPlan(o.stundenplan||o.plan);await persistPlan()}
-  if(Array.isArray(o.weeks)){for(const w of o.weeks){if(!w||!w.key)continue;S.weeks[w.key]=weekFromDoc(w.key,w);await persistWeek(w.key)}}S.ovLoaded=false;render();toast("Backup eingespielt")}
+async function tryWrite(fn,label,fails){for(let i=0;i<3;i++){try{await fn();return true}catch(e){console.error(label,e);await new Promise(r=>setTimeout(r,400*(i+1)))}}fails.push(label);return false}
+async function importBackup(o){
+  const fails=[];let n=0;const weeks=Array.isArray(o.weeks)?o.weeks.filter(w=>w&&w.key):[];
+  toast("Backup wird eingespielt…",null,null,60000);
+  if(Array.isArray(o.courses)){S.courses=normCourses(o.courses);await tryWrite(()=>persistCourses(),"Kurse",fails)}
+  if(o.settings){S.settings=normSettings(o.settings);await tryWrite(()=>persistSettings(),"Einstellungen",fails)}
+  if(o.stundenplan||o.plan){S.plan=normPlan(o.stundenplan||o.plan);await tryWrite(()=>persistPlan(),"Stundenplan",fails)}
+  for(const w of weeks){S.weeks[w.key]=weekFromDoc(w.key,w);const ok=await tryWrite(()=>persistWeek(w.key),"Woche "+w.key,fails);if(ok)n++;
+    if(n%10===0)toast("Backup wird eingespielt… "+n+" von "+weeks.length,null,null,60000)}
+  S.ovLoaded=false;render();
+  if(fails.length)toast("Nicht gespeichert: "+fails.slice(0,3).join(", ")+(fails.length>3?" und "+(fails.length-3)+" weitere":"")+". Bitte erneut einspielen.",null,null,8000);
+  else toast("Backup eingespielt: "+n+" Wochen",null,null,4000)}
 
 
 

@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-C+Bcx630zzCJW/iJpXGvkBQjLttVgi+RUa4FGNHKysU=' https://www.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https://*.googleapis.com https://*.firebaseio.com wss://*.firebaseio.com https://*.firebaseapp.com https://www.gstatic.com; manifest-src 'self'; worker-src 'self'; base-uri 'none'; object-src 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-D4zJZs0RyoJOquZOVnyeQW8bPP8hkh7w9cxLOXkzigc=' https://www.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https://*.googleapis.com https://*.firebaseio.com wss://*.firebaseio.com https://*.firebaseapp.com https://www.gstatic.com; manifest-src 'self'; worker-src 'self'; base-uri 'none'; object-src 'none'; form-action 'none'">
 <meta name="referrer" content="no-referrer">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#F7F7F5">
@@ -160,6 +160,8 @@ h1,h2{margin:0;font-weight:700}
 .chip{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line);border-radius:20px;padding:8px 12px;background:var(--surface);font-weight:600;font-size:.9rem}
 .chip i{width:10px;height:10px;border-radius:50%;display:inline-block}
 .chip.x{padding:8px 10px;color:var(--ink2);font-weight:400}
+.chip.on{background:var(--soft);color:var(--soft-ink);border-color:var(--soft-ink);box-shadow:inset 0 0 0 1px var(--soft-ink)}
+.chip.on::after{content:"✓";font-weight:800;margin-left:2px}
 .sheet-bg{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:20;display:flex;align-items:flex-end;justify-content:center}
 .sheet{background:var(--surface);width:100%;max-width:560px;border-radius:20px 20px 0 0;padding:20px 20px calc(24px + env(safe-area-inset-bottom));max-height:92vh;overflow:auto}
 .sheet h2{font-size:1.15rem;margin-bottom:4px}
@@ -240,7 +242,7 @@ textarea{width:100%;border:1px solid var(--line);background:var(--surface2);bord
       <div class="err hidden" id="aErr"></div>
       <div class="acts"><button class="btn" id="aReg">Registrieren</button><button class="btn p" id="aLogin">Anmelden</button></div>
       <button class="link" id="aReset" style="margin-top:8px">Passwort vergessen</button>
-      <p class="note" style="margin-top:30px">Version 18</p>
+      <p class="note" style="margin-top:30px">Version 21</p>
     </div>
     <div id="authCfg" class="hidden err">Firebase-Konfiguration fehlt. In index.html den Block FIREBASE_CONFIG ausfüllen (siehe Anleitung, Schritt 5).</div>
   </div>
@@ -340,7 +342,7 @@ function normPlan(p){let vs=[];if(p&&Array.isArray(p.versions))vs=p.versions.fil
 function normRaster(r){const v=[];if(Array.isArray(r))r.forEach(x=>{if(typeof x==="string"){const a=x.split("-");if(isHM(a[0])&&isHM(a[1]))v.push([a[0],a[1]])}else if(Array.isArray(x)&&isHM(x[0])&&isHM(x[1]))v.push([x[0],x[1]])});return v.length?v:DEFAULT_RASTER.map(x=>x.slice())}
 function rasterOut(r){return r.map(x=>x[0]+"-"+x[1])}
 function planOut(){return {versions:S.plan.versions.map(v=>({id:v.id,from:v.from,items:v.items,raster:rasterOut(v.raster)}))}}
-function versionFor(ds){let v=null;for(const x of S.plan.versions){if(!x.from||x.from<=ds)v=x;else break}return v}
+function versionFor(ds){let v=null;for(const x of S.plan.versions){if(x.from&&x.from<=ds)v=x;else if(x.from)break}return v}
 function currentVersion(){if(S.planSel){const v=S.plan.versions.find(x=>x.id===S.planSel);if(v)return v}return versionFor(ymd(new Date()))||S.plan.versions[0]}
 function itemTimes(it,r){const f=it.from?r[it.from-1]:null,t=it.to?r[it.to-1]:(f||null);return {start:f?f[0]:it.start,end:t?t[1]:it.end}}
 function planEntriesForWeek(key){const w=S.weeks[key];const mon=mondayOfKey(key);const out=[];const canc=(w&&w.cancelled)||[];const free=freeDays(key);
@@ -490,23 +492,45 @@ function renderUeb(){
   const mon=mondayOf(new Date());const k13=[];for(let i=13;i>=1;i--)k13.push(weekKeyOfDate(addDays(mon,-7*i)));const k52=[];for(let i=52;i>=1;i--)k52.push(weekKeyOfDate(addDays(mon,-7*i)));
   const compute=()=>{let n=0,tot=0,u=0;const forgot=[];
     let first=null;Object.values(S.weeks).forEach(w=>{if(w.entries&&w.entries.length&&(!first||w.key<first))first=w.key});
-    const cats={};const bars=[];
-    k13.forEach(k=>{const hol=isHolidayWeek(k);const fd=freeDays(k).slice(0,5).filter(Boolean).length;const part=!hol&&fd>0;const w=S.weeks[k];const has=(w&&w.entries&&w.entries.length)||sickEntries(k).length;const es=effectiveEntries(k);const t=es.reduce((s,e)=>s+e.minutes,0);const bu=es.filter(e=>TEACH.includes(e.activity)).reduce((s,e)=>s+e.minutes,0);bars.push({k,t,u:bu,hol,part,has});if(hol||part||!has)return;n++;tot+=t;
+    const planFrom=S.plan.versions.map(v=>v.from).filter(Boolean).sort()[0];
+    if(planFrom){const pk=weekKeyOf(planFrom);if(!first||pk<first)first=pk}
+    const cats={};const bars=[];const kUse=first?k13.filter(k=>k>=first):[];
+    kUse.forEach(k=>{const hol=isHolidayWeek(k);const fd=freeDays(k).slice(0,5).filter(Boolean).length;const part=!hol&&fd>0;const w=S.weeks[k];const has=(w&&w.entries&&w.entries.length)||sickEntries(k).length;const es=effectiveEntries(k);const t=es.reduce((s,e)=>s+e.minutes,0);const bu=es.filter(e=>TEACH.includes(e.activity)).reduce((s,e)=>s+e.minutes,0);bars.push({k,t,u:bu,hol,part,has});if(hol||part||!has)return;n++;tot+=t;
       es.forEach(e=>{if(TEACH.includes(e.activity))u+=e.minutes;else cats[e.activity]=(cats[e.activity]||0)+e.minutes})});
     if(first)k52.forEach(k=>{if(k<first||isHolidayWeek(k))return;const w=S.weeks[k];if(!((w&&w.entries&&w.entries.length)||sickEntries(k).length))forgot.push(k)});
-    let year=null;if(first&&first<=k52[0]){let ytot=0;k52.forEach(k=>{ytot+=effectiveEntries(k).reduce((s,e)=>s+e.minutes,0)});year={perWeek:ytot/52}}
-    const yearFrom=first?addDays(mondayOfKey(first),52*7):null;
-    return {n,avg:n?tot/n:0,avgU:n?u/n:0,avgR:n?(tot-u)/n:0,forgot,year,yearFrom,cats,bars}};
+    /* Schuljahr 1.8. bis 31.7., 52 Wochen ab dem Montag der Woche mit dem 1. August */
+    const now=new Date();const syStart=mondayOf(new Date(now.getMonth()>=7?now.getFullYear():now.getFullYear()-1,7,1));
+    const syLabel=syStart.getFullYear()+"/"+String(syStart.getFullYear()+1).slice(2);
+    const curKey=weekKeyOfDate(mondayOf(now));
+    let ytot=0,holWd=0,mW=0,pW=0,fW=0,mSchool=0,nSchool=0,mFer=0,nFer=0;
+    for(let i=0;i<52;i++){const mo=addDays(syStart,7*i);const k=weekKeyOfDate(mo);
+      for(let dd=0;dd<5;dd++){const ds=ymd(addDays(mo,dd));if(holidays(Number(ds.slice(0,4)))[ds]&&!NRW_FERIEN.some(rg=>ds>=rg[0]&&ds<=rg[1]))holWd++}
+      const hol=isHolidayWeek(k);const fd=freeDays(k).slice(0,5).filter(Boolean).length;const wk=S.weeks[k];
+      const done=k<curKey&&((wk&&wk.entries&&wk.entries.length)||sickEntries(k).length);
+      if(done){const t=effectiveEntries(k).reduce((s,e)=>s+e.minutes,0);ytot+=t;mW++;
+        if(!hol&&fd===0){mSchool+=t;nSchool++}}
+      else if(hol)fW++;else if(fd>0)pW+=(5-fd)/5;else pW+=1}
+    const sollWeek=(S.settings.weeklyTarget*60*46-holWd*(S.settings.weeklyTarget*60/5))/52/60;
+    /* Ferienarbeit aus allen erfassten Ferienwochen der letzten 52 Wochen */
+    k52.forEach(k=>{if(!isHolidayWeek(k))return;const wk=S.weeks[k];if(!(wk&&wk.entries&&wk.entries.length))return;mFer+=wk.entries.reduce((s,e)=>s+e.minutes,0);nFer++});
+    let year=null;
+    if(n>=2||nSchool>=2){
+      const aS=n?tot/n:(nSchool?mSchool/nSchool:0),aF=nFer?mFer/nFer:0;
+      const proj=(ytot+pW*aS+fW*aF)/52;
+      year={perWeek:proj,sollWeek,hol:holWd,label:syLabel,done:mW,complete:mW>=52,ferMeasured:nFer,ferAvg:aF/60}}
+    const yearFrom=null;
+    return {n,avg:n?tot/n:0,avgU:n?u/n:0,avgR:n?(tot-u)/n:0,forgot,year,yearFrom,cats,bars,from:kUse.length?mondayOfKey(kUse[0]):null}};
   const draw=(r,loading)=>{
     const soll=S.settings.weeklyTarget*46/52;
-    let h=r.n?`<div class="ov"><div class="ol"><div class="lbl">Durchschnitt pro Schulwoche</div><div class="num">${fmtMin(r.avg)}<span>h</span></div><div class="sub">${fmtDateShort(addDays(mon,-7*13))} bis ${fmtDateShort(addDays(mon,-1))} · ${r.n} volle Schulwochen. Ferien und Wochen mit freien Tagen nicht gezählt.</div>
+    let h=r.n?`<div class="ov"><div class="ol"><div class="lbl">Durchschnitt pro Schulwoche</div><div class="num">${fmtMin(r.avg)}<span>h</span></div><div class="sub">${fmtDateShort(r.from||addDays(mon,-7*13))} bis ${fmtDateShort(addDays(mon,-1))} · ${r.n} volle ${r.n===1?"Schulwoche":"Schulwochen"}${r.bars.length<13?", seit Beginn der Aufzeichnung":""}. Ferien und Wochen mit freien Tagen nicht gezählt.</div>
       ${(()=>{const wide=window.innerWidth>=800;const T=S.settings.weeklyTarget*60;const mx=Math.max(wide?T:60,...r.bars.map(x=>x.t))*(wide?1.15:1.12);const H=wide?160:96;const px=m=>Math.round(m/mx*H);
         return `<div class="bars" style="height:${H+34}px">${wide?`<div class="soll" style="bottom:${px(T)+18}px"><span>Soll ${S.settings.weeklyTarget} h</span></div>`:""}${r.bars.map(b=>{const hu=wide?px(b.u):0,hr=Math.max(b.t?3:0,px(b.t)-hu);const miss=!b.hol&&!b.has;return `<div class="bar ${b.hol?"hol":""} ${b.part?"part":""} ${miss?"miss":""}"><em>${b.hol&&!b.t?"":Math.round(b.t/60)}</em><div class="stack" style="height:${Math.max(3,hu+hr)}px"><i class="r" style="height:${hr}px"></i>${wide?`<i class="u" style="height:${hu}px"></i>`:""}</div><small>${Number(b.k.slice(6))}</small></div>`}).join("")}</div>
         <div class="legend">${wide?'<span><i class="l1"></i>Vorbereitung etc.</span><span><i class="lu"></i>Unterricht</span>':'<span><i class="l1"></i>volle Schulwoche</span>'}<span><i class="l2"></i>Woche mit freien Tagen</span><span><i class="l3"></i>Ferien</span><span><i class="l4"></i>ohne Einträge</span></div>`})()}</div>
       <div class="or"><div class="ov2"><div style="${catVars("Unterricht")}"><small>Unterricht</small><b>${fmtMin(r.avgU)}<span>h</span></b></div><button id="ovR" style="${catVars("Unterrichtsvorbereitung")}"><small>Vorbereitung etc. ›</small><b>${fmtMin(r.avgR)}<span>h</span></b></button></div>`
-      :`<div class="ov"><div class="ol"><div class="empty">${loading?"lade…":"Noch keine abgeschlossene Schulwoche mit Einträgen in den letzten drei Monaten."}</div></div><div class="or">`;
-    if(r.year)h+=`<div class="year"><div class="lbl">Jahresbilanz</div><div class="num">${fmtDec(r.year.perWeek)}<span>h pro Woche</span></div><div class="sub">Soll ${soll.toFixed(1).replace(".",",")} h, ausgehend von ${S.settings.weeklyTarget} h und 30 Urlaubstagen · letzte 52 Wochen inkl. Ferien</div></div>`;
-    else if(r.yearFrom)h+=`<div class="year"><div class="sub" style="margin:0">Jahresbilanz ab ${fmtDateShort(r.yearFrom)} ${r.yearFrom.getFullYear()}, sobald 52 Wochen vorliegen.</div></div>`;
+      :`<div class="ov"><div class="ol"><div class="empty">${loading?"lade…":"Noch keine abgeschlossene Schulwoche mit Einträgen. Der Durchschnitt erscheint nach der ersten vollen Woche."}</div></div><div class="or">`;
+    if(r.year)h+=`<div class="year"><div class="lbl">${r.year.complete?"Jahresbilanz":"Hochrechnung"} Schuljahr ${r.year.label}</div><div class="num">${fmtDec(r.year.perWeek)}<span>h pro Woche</span></div>
+      <div class="sub">Soll ${r.year.sollWeek.toFixed(1).replace(".",",")} h · ${S.settings.weeklyTarget} h abzüglich 30 Urlaubstagen und ${r.year.hol} Feiertagen (NRW, werktags außerhalb der Ferien).${r.year.complete?"":` ${r.year.done} von 52 Schuljahreswochen erfasst, der Rest mit deinen Durchschnitten fortgeschrieben; Ferienwochen mit ${r.year.ferMeasured?fmtDec(r.year.ferAvg*60)+" h":"0 h, da noch keine Ferienwoche erfasst"}.`}</div></div>`;
+    else if(!loading)h+=`<div class="year"><div class="sub" style="margin:0">Hochrechnung für das Schuljahr erscheint ab drei vollen Schulwochen.</div></div>`;
     if(r.forgot.length&&!loading)h+=`<div class="warn">Woche vergessen einzutragen?<small>Schulwochen ohne Einträge, antippen öffnet die Woche</small><div class="wkchips">${r.forgot.map(k=>`<button data-k="${esc(k)}">KW ${Number(k.slice(6))}/${k.slice(2,4)}</button>`).join("")}</div></div>`;
     view.innerHTML=h+`</div></div>`;const ovR=$("ovR");if(ovR)ovR.onclick=()=>openBreakdown(r);view.querySelectorAll(".wkchips button").forEach(b=>b.onclick=()=>{S.viewMonday=mondayOfKey(b.dataset.k);S.tab="woche";render();window.scrollTo(0,0)})};
   draw(compute(),!!S.db&&!S.ovLoaded);
@@ -520,8 +544,10 @@ function renderPlan(){
   const v=currentVersion();const r=v.raster;const items=v.items;const today=ymd(new Date());
   const cellOf=(d,i)=>items.find(it=>it.day===d&&it.from===i+1);
   let h=`<div class="planwrap"><div class="pchips">`;
-  if(S.plan.versions.length>1||v.from){h+=`<div class="vers">${S.plan.versions.map(x=>`<button class="pill ${x.id===v.id?"on":""}" data-v="${esc(x.id)}">${x.from?(x.from>today?"ab ":"seit ")+fmtDate(x.from):"Grundplan"}</button>`).join("")}</div>`}
+  const multi=S.plan.versions.length>1;
+  h+=`<div class="vers">${multi?S.plan.versions.map(x=>`<button class="pill ${x.id===v.id?"on":""}" data-v="${esc(x.id)}">${x.from?(x.from>today?"ab ":"seit ")+fmtDate(x.from):"ohne Datum"}</button>`).join(""):""}<button class="pill ${v.from?"":"on"}" id="vStart">${v.from?(multi?"Datum ändern":"Gilt ab "+fmtDate(v.from)):"Gültig ab: bitte festlegen"}</button></div>`;
   const paint=S.planPaint&&courseById(S.planPaint)?S.planPaint:null;S.planPaint=paint;
+
   h+=`<div class="courses">${S.courses.map(c=>`<button class="chip ${paint===c.id?"on":""}" data-c="${esc(c.id)}"><i style="background:${safeColor(c.color)}"></i>${esc(c.name)}</button>`).join("")}<button class="chip x" id="newCourse">+ Kurs</button>${paint?`<button class="chip x" id="editCourse">✎ ${esc(courseName(paint))}</button>`:""}</div>
   <p class="note" style="margin:0 0 10px">${paint?"Felder antippen, um „"+esc(courseName(paint))+"“ einzutragen oder zu löschen. Chip erneut antippen beendet den Modus.":"Kurs oben wählen, dann Felder antippen. Belegte Felder lassen sich ziehen."}</p>`;
   h+=`</div><div class="pgrid"><div class="grid"><div></div>${WD.slice(0,5).map(x=>`<div class="h">${x}</div>`).join("")}`;
@@ -533,10 +559,10 @@ function renderPlan(){
   view.querySelectorAll(".vers .pill").forEach(b=>b.onclick=()=>{S.planSel=b.dataset.v;render()});
   view.querySelectorAll(".chip[data-c]").forEach(c=>c.onclick=()=>{S.planPaint=S.planPaint===c.dataset.c?null:c.dataset.c;render()});
   $("newCourse").onclick=()=>openCourse(null);const ec=$("editCourse");if(ec)ec.onclick=()=>openCourse(courseById(paint));
-  $("times").onclick=()=>openTimes(v);$("newVer").onclick=()=>openNewVersion(v);
+  $("times").onclick=()=>openTimes(v);$("newVer").onclick=()=>openNewVersion(v);$("vStart").onclick=()=>openVersionStart(v);
   /* Tippen und Ziehen */
   let drag=null;
-  const tapCell=async(d,i)=>{const it=cellOf(d,i);if(!paint){openCell(v,d,i);return}
+  const tapCell=async(d,i)=>{const it=cellOf(d,i);if(!v.from&&!it){openVersionStart(v,()=>tapCell(d,i));return}if(!paint){openCell(v,d,i);return}
     if(it&&it.courseId===paint)v.items=v.items.filter(x=>x.id!==it.id);else if(it)v.items=v.items.map(x=>x.id===it.id?Object.assign({},x,{courseId:paint}):x);else v.items=v.items.concat([{id:uid(),day:d,from:i+1,to:i+1,courseId:paint}]);
     S.ovLoaded=false;render();await persistPlan()};
   const moveCell=async(from,to)=>{const a=cellOf(from.d,from.i),b=cellOf(to.d,to.i);if(!a)return;
@@ -605,6 +631,16 @@ function openPlanInstance(key,p){
   const toggle=async()=>{const w=await ensureWeek(key);const c=(w.cancelled||[]).slice();w.cancelled=c.includes(p.planId)?c.filter(x=>x!==p.planId):c.concat([p.planId]);await persistWeek(key)};
   $("t").onclick=async()=>{close();await toggle();render()};
   const pi=$("pi");if(pi)pi.querySelectorAll("button").forEach(b=>b.onclick=async()=>{const cat=b.dataset.c;close();await toggle();const e={id:uid(),date:p.date,start:p.start,end:p.end,minutes:p.minutes,courseId:"",activity:cat};await addEntry(e);toast("Stunde entfällt, "+catLabel(cat)+" "+fmtMin(p.minutes)+" h eingetragen",null,null,3500)})}
+function openVersionStart(v,then){
+  const def=v.from||ymd(mondayOf(new Date()));
+  open(`<h2>Stundenplan gilt ab</h2><div class="sub">Erst ab diesem Datum zählen die Stunden als Unterricht. Wochen davor bleiben unberührt. Üblich: der erste Schultag des Halbjahres.</div>
+    <div class="field"><label>Datum</label><input type="date" id="vsD" value="${esc(def)}"></div>
+    <div class="acts"><button class="btn" id="vsC">Abbrechen</button><button class="btn p" id="vsS">Übernehmen</button></div>`);
+  $("vsC").onclick=close;
+  $("vsS").onclick=async()=>{const f=$("vsD").value;if(!isYMD(f)){toast("Datum prüfen");return}
+    if(S.plan.versions.some(x=>x.id!==v.id&&x.from===f)){toast("Für dieses Datum gibt es schon einen Plan");return}
+    v.from=f;S.plan.versions.sort((a,b)=>(a.from||"")<(b.from||"")?-1:1);S.ovLoaded=false;close();await persistPlan();render();if(then)then()}}
+
 function openCell(v,d,i){
   const r=v.raster;const it=v.items.find(x=>x.day===d&&x.from===i+1);
   open(`<h2>${WDL[d]}, ${i+1}. Stunde</h2><div class="sub">${r[i][0]} bis ${r[i][1]}${v.from?" · Plan "+(v.from>ymd(new Date())?"ab ":"seit ")+fmtDate(v.from):""}</div>
@@ -617,7 +653,7 @@ function openCell(v,d,i){
   $("s").onclick=async()=>{let cid=sel;const nn=$("nc").value.trim();if(nn){const c={id:uid(),name:nn.slice(0,60),color:PALETTE[S.courses.length%PALETTE.length]};S.courses=S.courses.concat([c]);cid=c.id;await persistCourses()}
     if(!cid){toast("Kurs wählen oder anlegen");return}
     if(it)v.items=v.items.map(x=>x.id===it.id?Object.assign({},x,{courseId:cid}):x);else v.items=v.items.concat([{id:uid(),day:d,from:i+1,to:i+1,courseId:cid}]);
-    close();await persistPlan();render()}}
+    close();await persistPlan();render();if(!v.from)openVersionStart(v)}}
 function openNewVersion(v){
   const def=ymd(addDays(mondayOf(new Date()),7));const canDel=S.plan.versions.length>1&&v.from;
   open(`<h2>Neuer Stundenplan</h2><div class="sub">Der aktuelle Plan wird kopiert und gilt ab dem gewählten Datum als neue Version. Wochen davor rechnen weiter mit dem alten Plan.</div>
@@ -651,7 +687,7 @@ function openSettings(){
     <div class="field"><label>Export als CSV</label><div class="two"><input type="date" id="xf" value="${from}"><input type="date" id="xt" value="${to}"></div></div>
     <div class="acts"><button class="btn" id="csv">CSV</button><button class="btn" id="json">Backup sichern</button><button class="btn" id="imp">Backup einspielen</button></div><input type="file" id="impFile" accept=".json,application/json" style="display:none"><div id="xo"></div>
     <p class="note">${S.user?"Angemeldet als "+esc(S.user.email)+". Änderungen werden auf allen angemeldeten Geräten synchronisiert, offline zwischengespeichert.":"Nicht angemeldet, Daten liegen nur auf diesem Gerät."}</p>
-    <p class="note">Version 18. Als App installieren: Android Chrome Menü „Zum Startbildschirm hinzufügen“, iPad Safari Teilen „Zum Home-Bildschirm“, Windows Chrome/Edge Adressleiste „App installieren“.</p>
+    <p class="note">Version 21. Als App installieren: Android Chrome Menü „Zum Startbildschirm hinzufügen“, iPad Safari Teilen „Zum Home-Bildschirm“, Windows Chrome/Edge Adressleiste „App installieren“.</p>
     <div class="acts">${S.user?'<button class="btn dg" id="lo">Abmelden</button>':""}<button class="btn" id="c">Schließen</button><button class="btn p" id="s">Speichern</button></div>`);
   const lo=$("lo");if(lo)lo.onclick=()=>ask("Abmelden? Die Daten bleiben im Konto und erscheinen nach erneuter Anmeldung.","Abmelden",()=>{close();logout()});
   $("thm").querySelectorAll("button").forEach(b=>b.onclick=()=>{applyTheme(b.dataset.t);$("thm").querySelectorAll("button").forEach(x=>x.classList.toggle("on",x===b));render()});
